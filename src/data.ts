@@ -1,0 +1,47 @@
+import { Tour, Facility } from './types';
+import t1Img from '../asset/parola-park.jpg';
+import t2Img from '../asset/parola-park (1).jpg';
+import t3Img from '../asset/parola-park (2).jpg';
+import f1Img from '../asset/parola1.jpg';
+import f2Img from '../asset/parola2.jpg';
+
+export const TOURS: Tour[] = [
+  {
+    id: 't1',
+    title: 'Historical Tour',
+    description: 'Explore the 1861 watchtower and historic cannons.',
+    price: 10,
+    image: t1Img,
+  },
+  {
+    id: 't2',
+    title: 'Sunset Viewing',
+    description: 'Experience the best sunset view in town from the lighthouse.',
+    price: 0,
+    image: t2Img,
+  },
+  {
+    id: 't3',
+    title: 'Urban Guide',
+    description: 'Professional guide for your group (per day).',
+    price: 1000,
+    image: t3Img,
+  },
+];
+
+export const FACILITIES: Facility[] = [
+  {
+    id: 'f1',
+    name: 'Entrance Fee',
+    price: 10,
+    category: 'Facility',
+    image: f1Img,
+  },
+  {
+    id: 'f2',
+    name: 'Urban Guide (Group)',
+    price: 1000,
+    category: 'Facility',
+    image: f2Img,
+  },
+];

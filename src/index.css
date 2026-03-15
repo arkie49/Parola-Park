@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ocean-deep: #0F172A;
+  --color-ocean-primary: #1E40AF;
+  --color-sand-light: #F8F5F2;
+  --color-sand-muted: #E5E1DA;
+  --color-sunset-vibrant: #F59E0B;
+  --color-sunset-soft: #FEF3C7;
+  
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+
+  --font-display: 'Playfair Display', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-sand-light text-ocean-deep font-sans antialiased;
+  }
+}
+
+.glass-card {
+  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl shadow-ocean-deep/5;
+}
+
+.glass-dark {
+  @apply bg-ocean-deep/80 backdrop-blur-lg border border-white/10 text-white;
+}
+
+.input-modern {
+  @apply w-full h-14 px-6 bg-white border border-sand-muted rounded-2xl focus:outline-none focus:ring-2 focus:ring-ocean-primary/20 transition-all placeholder:text-gray-400;
+}
+
+.btn-luxury {
+  @apply bg-ocean-deep text-white py-4 px-8 rounded-2xl font-semibold tracking-wide active:scale-95 transition-all hover:bg-ocean-primary shadow-lg shadow-ocean-deep/10;
+}
+
+.btn-outline {
+  @apply border-2 border-ocean-deep text-ocean-deep py-4 px-8 rounded-2xl font-semibold active:scale-95 transition-all hover:bg-ocean-deep hover:text-white;
+}
+
+.nav-item-active {
+  @apply text-ocean-primary relative after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-ocean-primary after:rounded-full;
+}
