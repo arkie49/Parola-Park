@@ -14,7 +14,7 @@ export interface Facility {
   category: 'Equipment' | 'Facility';
 }
 
-export type Screen = 'splash' | 'home' | 'discover' | 'reserve' | 'profile' | 'auth' | 'checkout' | 'success';
+export type Screen = 'splash' | 'home' | 'discover' | 'reserve' | 'profile' | 'auth' | 'checkout' | 'success' | 'admin';
 
 export interface CartItem {
   id: string;

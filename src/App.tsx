@@ -9,11 +9,12 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
+  sendPasswordResetEmail,
   onAuthStateChanged, 
   signOut,
   User as FirebaseUser 
 } from 'firebase/auth';
-import { ref, push, set, serverTimestamp, onValue, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, push, set, serverTimestamp, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
 import { auth, db } from './firebase';
 import { 
   Search, 
@@ -38,6 +39,7 @@ import {
   Bell,
   CreditCard,
   ChevronRight,
+  Sun,
   Clock
 } from 'lucide-react';
 import { Screen, CartItem } from './types';
@@ -50,10 +52,17 @@ import parola1 from '../asset/parola1.jpg';
 import parola2 from '../asset/parola2.jpg';
 import parolaSablayan from '../asset/Sablayan-Parola-Park-Sablayan-1003x380.jpg';
 
+const ADMIN_EMAIL = 'adminparola@gmail.com';
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [profileStatus, setProfileStatus] = useState<'unknown' | 'complete' | 'incomplete'>('unknown');
+  const [postAuthRedirect, setPostAuthRedirect] = useState<Screen | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'completeProfile'>('login');
+  const [cartHydratedForUserId, setCartHydratedForUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -62,15 +71,139 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user) {
+      setProfileStatus('unknown');
+      return;
+    }
+
+    const profileRef = ref(db, `users/${user.uid}/profile`);
+    const unsubscribe = onValue(profileRef, (snapshot) => {
+      const profile = snapshot.val();
+      setProfileStatus(profile?.profileComplete ? 'complete' : 'incomplete');
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const routeToAuth = ({
+    mode,
+    notice,
+    redirect,
+  }: {
+    mode: 'login' | 'signup' | 'completeProfile';
+    notice: string | null;
+    redirect: Screen | null;
+  }) => {
+    setAuthMode(mode);
+    setAuthNotice(notice);
+    setPostAuthRedirect(redirect);
+    setCurrentScreen('auth');
+  };
+
   const navigate = (screen: Screen) => {
+    const isProtected = screen === 'reserve' || screen === 'checkout';
+    const isAdminRoute = screen === 'admin';
+
+    if (isAdminRoute) {
+      const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
+      if (!isAdmin) {
+        routeToAuth({
+          mode: 'login',
+          notice: 'Admin access requires an admin account.',
+          redirect: null,
+        });
+        return;
+      }
+    }
+
+    if (isProtected) {
+      if (!user) {
+        routeToAuth({
+          mode: 'signup',
+          notice: 'Create an account and complete your profile to continue.',
+          redirect: screen,
+        });
+        return;
+      }
+
+      if (profileStatus !== 'complete') {
+        routeToAuth({
+          mode: 'completeProfile',
+          notice: 'Please complete your profile to continue.',
+          redirect: screen,
+        });
+        return;
+      }
+    }
+
     setCurrentScreen(screen);
   };
 
   const addToCart = (item: CartItem) => {
-    setCart([...cart, item]);
+    setCart(prev => {
+      const exists = prev.some(i => i.id === item.id && i.type === item.type);
+      if (exists) return prev;
+      return [...prev, item];
+    });
+  };
+
+  const removeFromCart = ({ id, type }: { id: string; type: CartItem['type'] }) => {
+    setCart(prev => prev.filter(i => !(i.id === id && i.type === type)));
+  };
+
+  const toggleCartItem = (item: CartItem) => {
+    setCart(prev => {
+      const exists = prev.some(i => i.id === item.id && i.type === item.type);
+      if (exists) {
+        return prev.filter(i => !(i.id === item.id && i.type === item.type));
+      }
+      return [...prev, item];
+    });
   };
 
   const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+
+  useEffect(() => {
+    if (!user) {
+      setCartHydratedForUserId(null);
+      return;
+    }
+
+    if (cartHydratedForUserId === user.uid) return;
+
+    const hydrate = async () => {
+      try {
+        const cartSnap = await get(ref(db, `users/${user.uid}/cart/items`));
+        const savedItems = cartSnap.val();
+        if (Array.isArray(savedItems) && savedItems.length > 0 && cart.length === 0) {
+          setCart(savedItems);
+        }
+      } catch (e) {
+      } finally {
+        setCartHydratedForUserId(user.uid);
+      }
+    };
+
+    hydrate();
+  }, [user, cartHydratedForUserId, cart.length]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (cartHydratedForUserId !== user.uid) return;
+
+    const persist = async () => {
+      try {
+        await set(ref(db, `users/${user.uid}/cart`), {
+          items: cart,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+      }
+    };
+
+    persist();
+  }, [user, cartHydratedForUserId, cart]);
 
   const handleLogout = async () => {
     try {
@@ -114,15 +247,29 @@ export default function App() {
           {currentScreen === 'reserve' && (
             <ReserveScreen 
               onBack={() => navigate('home')} 
-              onAddToCart={addToCart}
+              cart={cart}
+              onToggleCartItem={toggleCartItem}
               onNavigate={navigate}
             />
           )}
           {currentScreen === 'auth' && (
             <AuthScreen 
-              onSuccess={() => {
-                navigate('home');
-              }} 
+              mode={authMode}
+              notice={authNotice}
+              onSuccess={(screen?: Screen) => {
+                setAuthMode('login');
+                setAuthNotice(null);
+
+                if (screen === 'admin') {
+                  setPostAuthRedirect(null);
+                  navigate('admin');
+                  return;
+                }
+
+                const target = postAuthRedirect ?? 'home';
+                setPostAuthRedirect(null);
+                setCurrentScreen(target);
+              }}
               onBack={() => navigate('home')}
             />
           )}
@@ -148,11 +295,14 @@ export default function App() {
           {currentScreen === 'success' && (
             <SuccessScreen onHome={() => navigate('home')} />
           )}
+          {currentScreen === 'admin' && (
+            <AdminScreen onBack={() => navigate('home')} />
+          )}
         </AnimatePresence>
       </div>
 
       {/* Persistent Bottom Nav */}
-      {currentScreen !== 'splash' && currentScreen !== 'auth' && currentScreen !== 'checkout' && currentScreen !== 'success' && (
+      {currentScreen !== 'splash' && currentScreen !== 'auth' && currentScreen !== 'checkout' && currentScreen !== 'success' && currentScreen !== 'admin' && (
         <nav className="h-20 bg-white/80 backdrop-blur-md border-t border-sand-muted flex items-center justify-around px-8 z-50">
           <NavButton icon={<Home size={22} />} active={currentScreen === 'home'} onClick={() => navigate('home')} />
           <NavButton icon={<Compass size={22} />} active={currentScreen === 'discover'} onClick={() => navigate('discover')} />
@@ -448,127 +598,376 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
   );
 }
 
-function ReserveScreen({ onBack, onAddToCart, onNavigate }: { onBack: () => void, onAddToCart: (i: CartItem) => void, onNavigate: (s: Screen) => void }) {
-  const [selectedTourId, setSelectedTourId] = useState<string | null>(null);
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+function ReserveScreen({
+  onBack,
+  cart,
+  onToggleCartItem,
+  onNavigate,
+}: {
+  onBack: () => void;
+  cart: CartItem[];
+  onToggleCartItem: (i: CartItem) => void;
+  onNavigate: (s: Screen) => void;
+}) {
+  const [activeSection, setActiveSection] = useState<'tours' | 'facilities'>('tours');
 
-  const toggleFacility = (id: string) => {
-    if (selectedFacilities.includes(id)) {
-      setSelectedFacilities(selectedFacilities.filter(i => i !== id));
-    } else {
-      setSelectedFacilities([...selectedFacilities, id]);
-    }
-  };
-
-  const handleAddTour = () => {
-    if (!selectedTourId) return;
-    const tour = TOURS.find(t => t.id === selectedTourId);
-    if (!tour) return;
-    onAddToCart({ id: tour.id, name: tour.title, price: tour.price, type: 'tour' });
-    setSelectedTourId(null);
-  };
-
-  const handleAddFacilities = () => {
-    if (selectedFacilities.length === 0) return;
-    selectedFacilities.forEach(id => {
-      const item = FACILITIES.find(f => f.id === id);
-      if (item) onAddToCart({ id: item.id, name: item.name, price: item.price, type: 'facility' });
-    });
-    setSelectedFacilities([]);
-  };
+  const selectedTours = cart.filter(i => i.type === 'tour');
+  const selectedFacilityItems = cart.filter(i => i.type === 'facility');
 
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="p-8 space-y-10"
+      className="h-full overflow-y-auto"
     >
-      <div className="flex items-center gap-4">
-        <button onClick={onBack} className="p-2 hover:bg-sand-muted rounded-xl transition-colors">
-          <Home size={20} className="text-ocean-deep" />
-        </button>
-        <h2 className="text-3xl font-display font-bold text-ocean-deep">Reserve</h2>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Tours</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {TOURS.map((tour) => (
-            <button 
-              key={tour.id}
-              onClick={() => setSelectedTourId(tour.id)}
-              className={`h-36 rounded-3xl font-bold transition-all duration-300 flex flex-col items-center justify-center gap-2 px-4 ${
-                selectedTourId === tour.id 
-                  ? 'bg-ocean-deep text-white shadow-xl scale-95' 
-                  : 'glass-card text-ocean-deep hover:border-ocean-primary/30'
-              }`}
-            >
-              <span className="text-sm tracking-widest uppercase text-center">{tour.title}</span>
-              <span className="text-[10px] opacity-70 font-normal text-center leading-snug">{tour.description}</span>
-              <span className="text-xs opacity-70 font-normal">₱{tour.price}</span>
-            </button>
-          ))}
+      {/* Hero Section */}
+      <div className="relative h-80 bg-gradient-to-br from-ocean-deep via-ocean-primary to-sunset-vibrant">
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="relative h-full flex flex-col items-center justify-center text-center px-8 text-white">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white/10 backdrop-blur-sm p-4 rounded-3xl mb-8"
+          >
+            <Calendar size={48} className="text-sunset-soft" />
+          </motion.div>
+          <motion.h1 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-4xl font-display font-bold mb-4"
+          >
+            Reserve Your Experience
+          </motion.h1>
+          <motion.p 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-sunset-soft/90 text-sm"
+          >
+            Choose from our exclusive tours and facilities
+          </motion.p>
         </div>
+
+        {/* Back Button */}
         <button 
-          onClick={handleAddTour} 
-          disabled={!selectedTourId}
-          className="btn-luxury disabled:opacity-30 disabled:pointer-events-none"
+          onClick={onBack} 
+          className="absolute top-8 left-8 p-3 bg-white/10 backdrop-blur-sm rounded-2xl text-white hover:bg-white/20 transition-all"
         >
-          Add Tour
+          <Home size={20} />
         </button>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Facilities</h3>
-        <div className="space-y-3">
-          {FACILITIES.map((item) => (
-            <button 
-              key={item.id}
-              onClick={() => toggleFacility(item.id)}
-              className={`w-full py-5 px-8 rounded-3xl font-bold text-left transition-all duration-300 flex justify-between items-center ${
-                selectedFacilities.includes(item.id) 
-                  ? 'bg-ocean-deep text-white shadow-xl' 
-                  : 'glass-card text-ocean-deep hover:border-ocean-primary/30'
-              }`}
+      {/* Section Tabs */}
+      <div className="px-8 py-6 z-10">
+        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-2 flex shadow-xl">
+          <button
+            onClick={() => setActiveSection('tours')}
+            className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all ${
+              activeSection === 'tours' 
+                ? 'bg-ocean-deep text-white shadow-lg' 
+                : 'text-gray-600 hover:text-ocean-deep'
+            }`}
+          >
+            Tours
+          </button>
+          <button
+            onClick={() => setActiveSection('facilities')}
+            className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all ${
+              activeSection === 'facilities' 
+                ? 'bg-ocean-deep text-white shadow-lg' 
+                : 'text-gray-600 hover:text-ocean-deep'
+            }`}
+          >
+            Facilities
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-8 pb-8">
+        <AnimatePresence mode="wait">
+          {activeSection === 'tours' && (
+            <motion.div 
+              key="tours"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-8"
             >
-              <span className="tracking-wide">{item.name}</span>
-              <span className={`text-xs ${selectedFacilities.includes(item.id) ? 'text-sunset-soft' : 'text-gray-400'}`}>₱{item.price}</span>
-            </button>
-          ))}
-        </div>
-        <button 
-          onClick={handleAddFacilities} 
-          disabled={selectedFacilities.length === 0}
-          className="btn-luxury disabled:opacity-30 disabled:pointer-events-none"
-        >
-          Add Facilities
-        </button>
+              <div className="space-y-6">
+                <h3 className="text-lg font-display font-bold text-ocean-deep">Choose Your Tour</h3>
+                <p className="text-sm text-gray-600">Select one or more tours to add to your reservation</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {TOURS.map((tour, index) => (
+                  <motion.div
+                    key={tour.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <button 
+                      onClick={() => onToggleCartItem({ id: tour.id, name: tour.title, price: tour.price, type: 'tour' })}
+                      className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
+                        selectedTours.some(i => i.id === tour.id) 
+                          ? 'bg-ocean-deep text-white shadow-2xl scale-[0.98]' 
+                          : 'glass-card hover:shadow-xl hover:scale-[1.02]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`p-3 rounded-2xl flex-shrink-0 ${
+                          selectedTours.some(i => i.id === tour.id) 
+                            ? 'bg-white/20' 
+                            : 'bg-ocean-deep/10'
+                        }`}>
+                          {tour.id === 't1' && <History size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep'} />}
+                          {tour.id === 't2' && <Sun size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-sunset-vibrant'} />}
+                          {tour.id === 't3' && <User size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-primary'} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`font-display font-bold text-lg mb-1 ${
+                            selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep'
+                          }`}>
+                            {tour.title}
+                          </h4>
+                          <p className={`text-sm leading-relaxed mb-3 ${
+                            selectedTours.some(i => i.id === tour.id) ? 'text-white/80' : 'text-gray-600'
+                          }`}>
+                            {tour.description}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className={`text-lg font-bold ${
+                              selectedTours.some(i => i.id === tour.id) ? 'text-sunset-soft' : 'text-sunset-vibrant'
+                            }`}>
+                              ₱{tour.price === 0 ? 'FREE' : tour.price.toLocaleString()}
+                            </span>
+                            {selectedTours.some(i => i.id === tour.id) && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-6 h-6 bg-sunset-vibrant rounded-full flex items-center justify-center"
+                              >
+                                <CheckCircle2 size={16} className="text-white" />
+                              </motion.div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+
+              {selectedTours.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-sunset-vibrant/10 border border-sunset-vibrant/20 rounded-3xl p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-sunset-vibrant rounded-full flex items-center justify-center">
+                      <CheckCircle2 size={20} className="text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-ocean-deep">{selectedTours.length} tour{selectedTours.length === 1 ? '' : 's'} selected</h4>
+                      <p className="text-sm text-gray-600">
+                        Total: ₱{selectedTours.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 pb-4">
+                    {selectedTours.map(item => (
+                      <div key={item.id} className="flex items-center justify-between text-sm">
+                        <span className="font-bold text-ocean-deep">{item.name}</span>
+                        <span className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-center text-xs font-bold text-gray-600">Selected tours are saved in your cart.</div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {activeSection === 'facilities' && (
+            <motion.div 
+              key="facilities"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-8"
+            >
+              <div className="space-y-6">
+                <h3 className="text-lg font-display font-bold text-ocean-deep">Additional Facilities</h3>
+                <p className="text-sm text-gray-600">Select any facilities you'd like to include</p>
+              </div>
+
+              <div className="space-y-6">
+                {FACILITIES.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <button 
+                      onClick={() => onToggleCartItem({ id: item.id, name: item.name, price: item.price, type: 'facility' })}
+                      className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
+                        selectedFacilityItems.some(i => i.id === item.id) 
+                          ? 'bg-ocean-deep text-white shadow-2xl' 
+                          : 'glass-card hover:shadow-xl hover:scale-[1.01]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-3 rounded-2xl ${
+                            selectedFacilityItems.some(i => i.id === item.id) 
+                              ? 'bg-white/20' 
+                              : 'bg-ocean-deep/10'
+                          }`}>
+                            {item.id === 'f1' && <Trees size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep'} />}
+                            {item.id === 'f2' && <User size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-primary'} />}
+                          </div>
+                          <div>
+                            <h4 className={`font-display font-bold text-lg ${
+                              selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep'
+                            }`}>
+                              {item.name}
+                            </h4>
+                            <p className={`text-sm ${
+                              selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/70' : 'text-gray-500'
+                            }`}>
+                              {item.category}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-lg font-bold ${
+                            selectedFacilityItems.some(i => i.id === item.id) ? 'text-sunset-soft' : 'text-sunset-vibrant'
+                          }`}>
+                            ₱{item.price.toLocaleString()}
+                          </span>
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                            selectedFacilityItems.some(i => i.id === item.id) 
+                              ? 'bg-sunset-vibrant border-sunset-vibrant' 
+                              : 'border-gray-300'
+                          }`}>
+                            {selectedFacilityItems.some(i => i.id === item.id) && (
+                              <CheckCircle2 size={14} className="text-white" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+
+              {selectedFacilityItems.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-ocean-primary/10 border border-ocean-primary/20 rounded-3xl p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-ocean-primary rounded-full flex items-center justify-center">
+                      <CheckCircle2 size={20} className="text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-ocean-deep">
+                        {selectedFacilityItems.length} facilit{selectedFacilityItems.length === 1 ? 'y' : 'ies'} selected
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Total: ₱{selectedFacilityItems.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 pb-4">
+                    {selectedFacilityItems.map(item => (
+                      <div key={item.id} className="flex items-center justify-between text-sm">
+                        <span className="font-bold text-ocean-deep">{item.name}</span>
+                        <span className="font-bold text-sunset-vibrant">₱{item.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-center text-xs font-bold text-gray-600">Selected facilities are saved in your cart.</div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="flex flex-col gap-4 pt-2">
-        <div className="relative py-4">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-sand-muted"></div></div>
-          <div className="relative flex justify-center text-xs uppercase tracking-widest text-gray-400 bg-sand-light px-4">Navigation</div>
-        </div>
+      {/* Bottom Actions */}
+      <div className="px-8 pb-12">
         <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => onNavigate('checkout')} className="btn-outline py-3 text-sm">Checkout</button>
-          <button onClick={() => onNavigate('discover')} className="btn-outline py-3 text-sm">Discover</button>
+          <button 
+            onClick={() => onNavigate('checkout')} 
+            className="btn-luxury py-4 text-sm font-bold"
+          >
+            View Cart & Checkout
+          </button>
+          <button 
+            onClick={() => onNavigate('discover')} 
+            className="btn-outline py-4 text-sm font-bold"
+          >
+            Learn More
+          </button>
         </div>
       </div>
     </motion.div>
   );
 }
 
-function AuthScreen({ onSuccess, onBack }: { onSuccess: () => void, onBack: () => void }) {
+function AuthScreen({
+  onSuccess,
+  onBack,
+  notice,
+  mode,
+}: {
+  onSuccess: (screen?: Screen) => void;
+  onBack: () => void;
+  notice: string | null;
+  mode: 'login' | 'signup' | 'completeProfile';
+}) {
+  const [step, setStep] = useState<'auth' | 'profile'>('auth');
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [address, setAddress] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    if (mode === 'completeProfile') {
+      setStep('profile');
+      return;
+    }
+
+    setStep('auth');
+    setIsLogin(mode === 'login');
+  }, [mode]);
+
+  const goToProfileStepIfNeeded = async (userId: string) => {
+    const profileSnap = await get(ref(db, `users/${userId}/profile`));
+    const profile = profileSnap.val();
+    if (profile?.profileComplete) {
+      onSuccess();
+      return;
+    }
+    setStep('profile');
+  };
+
+  const handleAuthSubmit = async () => {
     setError(null);
+    setInfo(null);
     setLoading(true);
     try {
       if (isLogin) {
@@ -576,9 +975,71 @@ function AuthScreen({ onSuccess, onBack }: { onSuccess: () => void, onBack: () =
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+
+      if (email.toLowerCase() === ADMIN_EMAIL) {
+        onSuccess('admin');
+        return;
+      }
+
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Authentication succeeded but user session is missing.');
+      }
+
+      if (!isLogin) {
+        setStep('profile');
+        return;
+      }
+
+      await goToProfileStepIfNeeded(currentUser.uid);
+    } catch (err: any) {
+      setError(err?.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError(null);
+    setInfo(null);
+    if (!email) {
+      setError('Enter your email first, then tap Forgot Password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setInfo(`Password reset link sent to ${email}`);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to send reset email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileSubmit = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Please sign in to continue.');
+      }
+
+      await set(ref(db, `users/${currentUser.uid}/profile`), {
+        email: currentUser.email || email,
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        address: address.trim(),
+        profileComplete: true,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      });
+
       onSuccess();
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      setError(err?.message || 'Failed to save profile.');
     } finally {
       setLoading(false);
     }
@@ -596,45 +1057,102 @@ function AuthScreen({ onSuccess, onBack }: { onSuccess: () => void, onBack: () =
       </button>
 
       <div className="space-y-8">
-        <div className="space-y-2">
-          <h2 className="text-4xl font-display font-bold text-ocean-deep">{isLogin ? 'Welcome Back' : 'Join Us'}</h2>
-          <p className="text-gray-500 text-sm">{isLogin ? 'Sign in to your Parola Park account' : 'Create an account to start exploring'}</p>
-        </div>
+        {notice && (
+          <div className="glass-card p-4 rounded-2xl text-sm text-ocean-deep">
+            {notice}
+          </div>
+        )}
 
-        <div className="space-y-4">
-          <input 
-            type="email" 
-            placeholder="Email" 
-            className="input-modern" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input 
-            type="password" 
-            placeholder="Password" 
-            className="input-modern" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
+        {step === 'auth' ? (
+          <>
+            <div className="space-y-2">
+              <h2 className="text-4xl font-display font-bold text-ocean-deep">{isLogin ? 'Welcome Back' : 'Join Us'}</h2>
+              <p className="text-gray-500 text-sm">{isLogin ? 'Sign in to your Parola Park account' : 'Create an account to start exploring'}</p>
+            </div>
 
-        {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
+            <div className="space-y-4">
+              <input 
+                type="email" 
+                placeholder="Email" 
+                className="input-modern" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input 
+                type="password" 
+                placeholder="Password" 
+                className="input-modern" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-        <div className="text-center">
-          {isLogin ? (
-            <p className="text-sm text-gray-600">New here? <button onClick={() => setIsLogin(false)} className="text-ocean-primary font-bold hover:underline">Create Account</button></p>
-          ) : (
-            <p className="text-sm text-gray-600">Already have an account? <button onClick={() => setIsLogin(true)} className="text-ocean-primary font-bold hover:underline">Log In</button></p>
-          )}
-        </div>
+            {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
+            {info && <p className="text-emerald-600 text-xs font-bold">{info}</p>}
 
-        <button 
-          onClick={handleSubmit}
-          disabled={loading || !email || !password}
-          className="btn-luxury w-full disabled:opacity-50"
-        >
-          {loading ? 'Authenticating...' : (isLogin ? 'Sign In' : 'Create Account')}
-        </button>
+            <div className="text-center">
+              {isLogin ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">New here? <button onClick={() => setIsLogin(false)} className="text-ocean-primary font-bold hover:underline">Create Account</button></p>
+                  <button onClick={handleForgotPassword} className="text-xs font-bold text-ocean-primary hover:underline" disabled={loading}>
+                    Forgot Password?
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">Already have an account? <button onClick={() => setIsLogin(true)} className="text-ocean-primary font-bold hover:underline">Log In</button></p>
+              )}
+            </div>
+
+            <button 
+              onClick={handleAuthSubmit}
+              disabled={loading || !email || !password}
+              className="btn-luxury w-full disabled:opacity-50"
+            >
+              {loading ? 'Authenticating...' : (isLogin ? 'Sign In' : 'Create Account')}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <h2 className="text-3xl font-display font-bold text-ocean-deep">Complete Your Profile</h2>
+              <p className="text-gray-500 text-sm">Fill in the details below to continue browsing the app.</p>
+            </div>
+
+            <div className="space-y-4">
+              <input 
+                type="text" 
+                placeholder="Full name" 
+                className="input-modern" 
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+              <input 
+                type="tel" 
+                placeholder="Phone number" 
+                className="input-modern" 
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+              <input 
+                type="text" 
+                placeholder="Address" 
+                className="input-modern" 
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </div>
+
+            {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
+
+            <button 
+              onClick={handleProfileSubmit}
+              disabled={loading || !fullName.trim() || !phoneNumber.trim() || !address.trim()}
+              className="btn-luxury w-full disabled:opacity-50"
+            >
+              {loading ? 'Saving...' : 'Continue'}
+            </button>
+          </>
+        )}
       </div>
     </motion.div>
   );
@@ -648,6 +1166,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
     darkMode: false
   });
   const [modal, setModal] = useState<'payment' | 'notifications' | 'help' | null>(null);
+  const [receiptBooking, setReceiptBooking] = useState<any | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -699,7 +1218,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
       className="flex flex-col h-full bg-sand-light relative"
     >
       <AnimatePresence>
-        {modal && (
+        {(modal || receiptBooking) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -707,9 +1226,12 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
             className="absolute inset-0 z-[100] bg-ocean-deep/90 backdrop-blur-md p-8 flex flex-col"
           >
             <div className="flex items-center justify-between mb-10">
-              <h3 className="text-2xl font-display font-bold text-white capitalize">{modal}</h3>
+              <h3 className="text-2xl font-display font-bold text-white capitalize">{receiptBooking ? 'receipt' : modal}</h3>
               <button 
-                onClick={() => setModal(null)}
+                onClick={() => {
+                  setModal(null);
+                  setReceiptBooking(null);
+                }}
                 className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-colors"
               >
                 <ArrowRight size={24} className="rotate-180" />
@@ -717,6 +1239,9 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-4">
+              {receiptBooking && (
+                <ReceiptCard booking={receiptBooking} />
+              )}
               {modal === 'payment' && (
                 <div className="space-y-4">
                   <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
@@ -865,22 +1390,40 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
               className="space-y-4"
             >
               {history.length > 0 ? history.map((booking) => (
-                <div key={booking.id} className="p-4 glass-card rounded-2xl space-y-3 border-l-4 border-sunset-vibrant">
+                <button
+                  key={booking.id}
+                  onClick={() => setReceiptBooking(booking)}
+                  className="w-full text-left p-4 glass-card rounded-2xl space-y-3 border-l-4 border-sunset-vibrant hover:shadow-xl transition-all"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs font-bold text-ocean-deep">Booking Confirmed</p>
                       <p className="text-[10px] text-gray-400 flex items-center gap-1">
                         <Clock size={10} /> {new Date(booking.timestamp).toLocaleDateString()}
                       </p>
+                      {booking.receiptNo && (
+                        <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">{booking.receiptNo}</p>
+                      )}
                     </div>
                     <span className="text-sm font-bold text-ocean-primary">₱{booking.total}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {booking.payment?.method && (
+                      <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
+                    )}
+                    {booking.payment?.provider && (
+                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                    )}
+                    {booking.email?.sent === true && (
+                      <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {booking.items?.map((item: any, idx: number) => (
                       <span key={idx} className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">{item.name}</span>
                     ))}
                   </div>
-                </div>
+                </button>
               )) : (
                 <div className="text-center py-20 opacity-50">
                   <Clock size={40} className="mx-auto mb-4 text-gray-400" />
@@ -939,6 +1482,82 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
   );
 }
 
+function ReceiptCard({ booking }: { booking: any }) {
+  const items: Array<{ name: string; price: number; type?: string }> = Array.isArray(booking?.items) ? booking.items : [];
+  const total = typeof booking?.total === 'number' ? booking.total : Number(booking?.total || 0);
+  const receiptNo = booking?.receiptNo || booking?.bookingId || booking?.id || '—';
+  const customerName = booking?.customer?.fullName || booking?.userEmail || '—';
+  const customerEmail = booking?.userEmail || booking?.customer?.email || '—';
+  const customerPhone = booking?.customer?.phoneNumber || '—';
+  const customerAddress = booking?.customer?.address || '—';
+  const paymentMethod = booking?.payment?.method || booking?.paymentMethod || '—';
+  const paymentProvider = booking?.payment?.provider || booking?.paymentDetails || '—';
+  const dateLabel = booking?.timestamp ? new Date(booking.timestamp).toLocaleString() : '—';
+
+  return (
+    <div className="bg-white rounded-[32px] p-6 space-y-6 shadow-2xl">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Receipt</p>
+          <p className="text-xl font-display font-bold text-ocean-deep break-words">{receiptNo}</p>
+          <p className="text-xs text-gray-500 mt-1">{dateLabel}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total</p>
+          <p className="text-2xl font-display font-bold text-sunset-vibrant">₱{total.toLocaleString()}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <div className="p-4 rounded-2xl bg-sand-light border border-sand-muted">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Booked By</p>
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-ocean-deep">{customerName}</p>
+            <p className="text-xs text-gray-600 break-words">Email: {customerEmail}</p>
+            <p className="text-xs text-gray-600">Phone: {customerPhone}</p>
+            <p className="text-xs text-gray-600 break-words">Address: {customerAddress}</p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-sand-light border border-sand-muted">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Payment</p>
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-bold text-ocean-deep uppercase tracking-wider">{paymentMethod}</span>
+            <span className="font-bold text-gray-600 uppercase tracking-wider">{paymentProvider}</span>
+          </div>
+          {booking?.status && (
+            <p className="text-xs text-gray-600 mt-2">Status: {booking.status}</p>
+          )}
+          {booking?.email?.sent === true && (
+            <p className="text-xs text-emerald-600 font-bold mt-2">Confirmation email sent</p>
+          )}
+          {booking?.email?.sent === false && (
+            <p className="text-xs text-red-600 font-bold mt-2">Email failed: {booking?.email?.errorMessage || 'Unknown error'}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Items</p>
+        <div className="space-y-2">
+          {items.map((item, idx) => (
+            <div key={`${item.name}-${idx}`} className="flex items-center justify-between text-sm">
+              <div className="min-w-0">
+                <p className="font-bold text-ocean-deep truncate">{item.name}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{item.type || 'item'}</p>
+              </div>
+              <p className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : Number(item.price || 0).toLocaleString()}</p>
+            </div>
+          ))}
+          {items.length === 0 && (
+            <p className="text-sm text-gray-500">No items found.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileOption({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) {
   return (
     <button 
@@ -961,6 +1580,22 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   const [ewalletMode, setEwalletMode] = useState<'number' | 'scan'>('number');
   const [paymentStep, setPaymentStep] = useState<'form' | 'scanning' | 'confirm'>('form');
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
+  const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+
+    const profileRef = ref(db, `users/${user.uid}/profile`);
+    const unsubscribe = onValue(profileRef, (snapshot) => {
+      setProfile(snapshot.val());
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     if (paymentStep === 'scanning') {
@@ -1009,28 +1644,124 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
 
   const saveBooking = async () => {
     try {
+      if (!user) {
+        throw new Error('You must be signed in to complete checkout.');
+      }
+
       const bookingsRef = ref(db, 'bookings');
       const newBookingRef = push(bookingsRef);
+      const bookingId = newBookingRef.key;
+      const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const receiptNo = `PP-${dateStamp}-${(bookingId || '').slice(-6).toUpperCase()}`;
+
       await set(newBookingRef, {
-        userId: user?.uid || 'guest',
-        userEmail: user?.email || 'guest',
+        bookingId,
+        receiptNo,
+        userId: user.uid,
+        userEmail: user.email,
+        customer: {
+          fullName: profile?.fullName || null,
+          phoneNumber: profile?.phoneNumber || null,
+          address: profile?.address || null,
+        },
         items: cart,
         total: total,
-        paymentMethod: paymentMethod,
-        paymentDetails: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+        currency: 'PHP',
+        payment: {
+          method: paymentMethod,
+          provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+          ewalletMode: paymentMethod === 'ewallet' ? ewalletMode : null,
+        },
         timestamp: serverTimestamp(),
         status: 'confirmed'
       });
+
+      return { bookingId, receiptNo };
     } catch (error) {
       console.error("Error saving booking:", error);
+      throw error;
+    }
+  };
+
+  const sendConfirmationEmail = async ({ bookingId, receiptNo }: { bookingId: string | null, receiptNo: string }) => {
+    if (!user?.email) {
+      setEmailStatusMessage('Missing account email.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/send-booking-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: user.email,
+          booking: {
+            bookingId,
+            receiptNo,
+            customer: {
+              fullName: profile?.fullName || null,
+              phoneNumber: profile?.phoneNumber || null,
+              address: profile?.address || null,
+              email: user.email,
+            },
+            items: cart,
+            total,
+            currency: 'PHP',
+            payment: {
+              method: paymentMethod,
+              provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+            },
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null as any);
+        const message = body?.error || `Email send failed (HTTP ${res.status})`;
+        throw { message, provider: body?.provider || 'unknown' };
+      }
+
+      const okBody = await res.json().catch(() => null as any);
+      const provider = okBody?.provider || 'unknown';
+
+      if (bookingId) {
+        await set(ref(db, `bookings/${bookingId}/email`), {
+          sent: true,
+          sentTo: user.email,
+          sentAt: serverTimestamp(),
+          provider,
+        });
+      }
+
+      setEmailStatusMessage(`Receipt sent to ${user.email}`);
+    } catch (e: any) {
+      const message = typeof e?.message === 'string' ? e.message : (e instanceof Error ? e.message : 'Failed to send confirmation email');
+      const provider = typeof e?.provider === 'string' ? e.provider : 'unknown';
+      if (bookingId) {
+        try {
+          await set(ref(db, `bookings/${bookingId}/email`), {
+            sent: false,
+            sentTo: user.email,
+            errorAt: serverTimestamp(),
+            errorMessage: message,
+            provider,
+          });
+        } catch (inner) {
+        }
+      }
+
+      setEmailStatusMessage(message);
     }
   };
 
   const handlePayment = () => {
     if (paymentMethod === 'card') {
       setIsProcessing(true);
+      setEmailStatusMessage(null);
       setTimeout(async () => {
-        await saveBooking();
+        const saved = await saveBooking();
+        if (saved) {
+          await sendConfirmationEmail(saved);
+        }
         onSuccess();
       }, 2000);
     } else if (paymentMethod === 'ewallet') {
@@ -1045,8 +1776,12 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
 
   const handleFinalPayment = () => {
     setIsProcessing(true);
+    setEmailStatusMessage(null);
     setTimeout(async () => {
-      await saveBooking();
+      const saved = await saveBooking();
+      if (saved) {
+        await sendConfirmationEmail(saved);
+      }
       onSuccess();
     }, 2000);
   };
@@ -1113,45 +1848,47 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 bg-sand-light rounded-t-[40px] mt-4 p-8 flex flex-col items-center">
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isGCash ? 'bg-blue-600' : 'bg-[#00c07f]'} text-white`}>
-            {isGCash ? <span className="text-3xl font-bold">G</span> : <span className="text-3xl font-bold">M</span>}
-          </div>
-
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Paying To</p>
-          <h3 className="text-2xl font-display font-bold text-ocean-deep mb-8">Parola Park (Presing Park)</h3>
-
-          <div className="w-full bg-white rounded-3xl p-6 shadow-sm border border-sand-muted space-y-4">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-400">Total Amount</span>
-              <span className="text-2xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
+        <div className="flex-1 min-h-0 bg-sand-light rounded-t-[40px] mt-4 p-8 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isGCash ? 'bg-blue-600' : 'bg-[#00c07f]'} text-white`}>
+              {isGCash ? <span className="text-3xl font-bold">G</span> : <span className="text-3xl font-bold">M</span>}
             </div>
-            <div className="border-t border-sand-muted pt-4 flex justify-between items-center text-xs">
-              <span className="text-gray-400">Transaction Fee</span>
-              <span className="font-bold text-green-600">FREE</span>
-            </div>
-          </div>
 
-          <div className="w-full mt-10 space-y-4">
-            <div className="flex items-center gap-4 p-4 glass-card rounded-2xl">
-              <Wallet size={20} className={isGCash ? 'text-blue-600' : 'text-green-600'} />
-              <div className="flex-1">
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Payment Source</p>
-                <p className="text-sm font-bold text-ocean-deep">{isGCash ? 'GCash Balance' : 'Maya Wallet'}</p>
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Paying To</p>
+            <h3 className="text-2xl font-display font-bold text-ocean-deep mb-8">Parola Park (Presing Park)</h3>
+
+            <div className="w-full bg-white rounded-3xl p-6 shadow-sm border border-sand-muted space-y-4">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">Total Amount</span>
+                <span className="text-2xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Available</p>
-                <p className="text-sm font-bold text-ocean-deep">₱5,240.50</p>
+              <div className="border-t border-sand-muted pt-4 flex justify-between items-center text-xs">
+                <span className="text-gray-400">Transaction Fee</span>
+                <span className="font-bold text-green-600">FREE</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 justify-center text-[10px] text-gray-400 font-bold uppercase tracking-widest pt-4">
-              <ShieldCheck size={14} className="text-green-500" />
-              <span>Secure Payment Powered by {isGCash ? 'GCash' : 'Maya'}</span>
+            <div className="w-full mt-10 space-y-4">
+              <div className="flex items-center gap-4 p-4 glass-card rounded-2xl">
+                <Wallet size={20} className={isGCash ? 'text-blue-600' : 'text-green-600'} />
+                <div className="flex-1">
+                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Payment Source</p>
+                  <p className="text-sm font-bold text-ocean-deep">{isGCash ? 'GCash Balance' : 'Maya Wallet'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Available</p>
+                  <p className="text-sm font-bold text-ocean-deep">₱5,240.50</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 justify-center text-[10px] text-gray-400 font-bold uppercase tracking-widest pt-4">
+                <ShieldCheck size={14} className="text-green-500" />
+                <span>Secure Payment Powered by {isGCash ? 'GCash' : 'Maya'}</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-auto w-full">
+          <div className="pt-6 w-full">
             <button 
               onClick={handleFinalPayment}
               disabled={isProcessing}
@@ -1185,6 +1922,41 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       </div>
 
       <div className="space-y-10">
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Booking Summary</h3>
+
+          <div className="glass-card rounded-3xl p-6 space-y-4">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Account</p>
+              <p className="text-sm font-bold text-ocean-deep">{user?.email || '—'}</p>
+              {profile?.fullName && (
+                <p className="text-xs text-gray-500">{profile.fullName}</p>
+              )}
+            </div>
+
+            <div className="border-t border-sand-muted pt-4 space-y-2">
+              {cart.map((item, idx) => (
+                <div key={`${item.id}-${idx}`} className="flex items-center justify-between text-sm">
+                  <div className="min-w-0">
+                    <p className="font-bold text-ocean-deep truncate">{item.name}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{item.type}</p>
+                  </div>
+                  <p className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}</p>
+                </div>
+              ))}
+
+              {cart.length === 0 && (
+                <p className="text-sm text-gray-500">Your cart is empty.</p>
+              )}
+            </div>
+
+            <div className="border-t border-sand-muted pt-4 flex items-center justify-between">
+              <span className="text-gray-500 text-sm">Total</span>
+              <span className="text-xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
+            </div>
+          </div>
+        </section>
+
         <section className="space-y-6">
           <div className="flex flex-col gap-4">
             <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Payment Method</h3>
@@ -1285,6 +2057,11 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
             <span className="text-gray-500">Total Amount</span>
             <span className="text-3xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
           </div>
+          {emailStatusMessage && (
+            <div className="glass-card rounded-2xl p-4 text-xs font-bold text-ocean-deep">
+              {emailStatusMessage}
+            </div>
+          )}
           <button 
             onClick={handlePayment}
             disabled={isProcessing || total === 0 || (paymentMethod === 'ewallet' && !selectedEWallet)}
@@ -1332,6 +2109,388 @@ function SuccessScreen({ onHome }: { onHome: () => void }) {
       <button onClick={onHome} className="btn-luxury w-full max-w-[240px]">
         Return Home
       </button>
+    </motion.div>
+  );
+}
+
+function AdminScreen({ onBack }: { onBack: () => void }) {
+  console.log('AdminScreen component rendered');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'bookings' | 'settings'>('dashboard');
+  const [users, setUsers] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [receiptBooking, setReceiptBooking] = useState<any | null>(null);
+  const [bookingSearch, setBookingSearch] = useState('');
+  const [bookingFilter, setBookingFilter] = useState<'all' | 'emailSent' | 'emailFailed' | 'ewallet' | 'card'>('all');
+
+  const toTimestampMs = (value: any): number | null => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const n = Number(value);
+      if (!Number.isNaN(n)) return n;
+      const d = Date.parse(value);
+      if (!Number.isNaN(d)) return d;
+      return null;
+    }
+    if (value && typeof value === 'object') {
+      if (typeof value.seconds === 'number') return value.seconds * 1000;
+      if (typeof value._seconds === 'number') return value._seconds * 1000;
+    }
+    return null;
+  };
+
+  const formatDateTime = (timestamp: any) => {
+    const ms = toTimestampMs(timestamp);
+    if (!ms) return '—';
+    return `${new Date(ms).toLocaleDateString()} • ${new Date(ms).toLocaleTimeString()}`;
+  };
+
+  const normalizedSearch = bookingSearch.trim().toLowerCase();
+  const filteredBookings = bookings
+    .filter((b) => {
+      if (!normalizedSearch) return true;
+      const haystack = [
+        b.receiptNo,
+        b.bookingId,
+        b.id,
+        b.userEmail,
+        b.customer?.fullName,
+        b.customer?.phoneNumber,
+        b.customer?.address,
+        ...(Array.isArray(b.items) ? b.items.map((i: any) => i?.name) : []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedSearch);
+    })
+    .filter((b) => {
+      if (bookingFilter === 'all') return true;
+      if (bookingFilter === 'emailSent') return b.email?.sent === true;
+      if (bookingFilter === 'emailFailed') return b.email?.sent === false;
+      if (bookingFilter === 'ewallet') return (b.payment?.method || b.paymentMethod) === 'ewallet';
+      if (bookingFilter === 'card') return (b.payment?.method || b.paymentMethod) === 'card';
+      return true;
+    })
+    .sort((a, b) => (toTimestampMs(b.timestamp) || 0) - (toTimestampMs(a.timestamp) || 0));
+
+  useEffect(() => {
+    // Load users and bookings data
+    const loadData = async () => {
+      try {
+        // Load bookings
+        const bookingsRef = ref(db, 'bookings');
+        const bookingsQuery = query(bookingsRef, orderByChild('timestamp'));
+        onValue(bookingsQuery, (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            const bookingsList = Object.keys(data).map(key => ({
+              id: key,
+              ...data[key]
+            })).reverse(); // Most recent first
+            setBookings(bookingsList);
+          }
+        });
+      } catch (error) {
+        console.error('Error loading admin data:', error);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.total || 0), 0);
+  const totalBookings = bookings.length;
+  const uniqueUsers = new Set(bookings.map(b => b.userId)).size;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col h-full bg-sand-light"
+    >
+      {/* Admin Header */}
+      <div className="p-8 pb-4">
+        <div className="flex items-center gap-4 mb-6">
+          <button onClick={onBack} className="p-2 hover:bg-sand-muted rounded-xl transition-colors">
+            <Home size={20} className="text-ocean-deep" />
+          </button>
+          <h2 className="text-3xl font-display font-bold text-ocean-deep">Admin Dashboard</h2>
+        </div>
+        
+        <div className="p-6 glass-card rounded-[32px] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-ocean-primary to-sunset-vibrant" />
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-ocean-deep to-sunset-vibrant text-white flex items-center justify-center text-3xl font-display font-bold shadow-xl shrink-0">
+              A
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl font-display font-bold text-ocean-deep">Administrator</h3>
+              <p className="text-gray-500 text-xs mb-2">{ADMIN_EMAIL}</p>
+              <span className="px-2 py-0.5 bg-sunset-vibrant/10 text-sunset-vibrant text-[10px] font-bold rounded-full uppercase tracking-wider">Admin Access</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-8 flex gap-4 mb-6 overflow-x-auto">
+        {[
+          { key: 'dashboard', label: 'Dashboard', icon: <Home size={16} /> },
+          { key: 'users', label: 'Users', icon: <User size={16} /> },
+          { key: 'bookings', label: 'Bookings', icon: <Calendar size={16} /> },
+          { key: 'settings', label: 'Settings', icon: <Settings size={16} /> }
+        ].map((tab) => (
+          <button 
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as any)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === tab.key 
+                ? 'bg-ocean-deep text-white shadow-lg' 
+                : 'text-gray-400 hover:text-ocean-deep'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6 relative">
+        <AnimatePresence>
+          {receiptBooking && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[200] bg-ocean-deep/90 backdrop-blur-md p-8 flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-2xl font-display font-bold text-white capitalize">receipt</h3>
+                <button
+                  onClick={() => setReceiptBooking(null)}
+                  className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-colors"
+                >
+                  <ArrowRight size={24} className="rotate-180" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <ReceiptCard booking={receiptBooking} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence mode="wait">
+          {activeTab === 'dashboard' && (
+            <motion.div 
+              key="dashboard"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-6"
+            >
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-5 glass-card rounded-2xl text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Total Revenue</p>
+                  <p className="text-xl font-bold text-sunset-vibrant">₱{totalRevenue.toLocaleString()}</p>
+                </div>
+                <div className="p-5 glass-card rounded-2xl text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Total Bookings</p>
+                  <p className="text-xl font-bold text-ocean-deep">{totalBookings}</p>
+                </div>
+                <div className="p-5 glass-card rounded-2xl text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Unique Users</p>
+                  <p className="text-xl font-bold text-ocean-primary">{uniqueUsers}</p>
+                </div>
+                <div className="p-5 glass-card rounded-2xl text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Avg. Booking</p>
+                  <p className="text-xl font-bold text-sunset-soft">₱{totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 0}</p>
+                </div>
+              </div>
+
+              {/* Recent Bookings */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">Recent Bookings</h4>
+                {bookings.slice(0, 5).map((booking) => (
+                  <button key={booking.id} onClick={() => setReceiptBooking(booking)} className="w-full text-left p-4 glass-card rounded-2xl space-y-3 hover:shadow-xl transition-all">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs font-bold text-ocean-deep">{booking.receiptNo || booking.id}</p>
+                        <p className="text-[10px] text-gray-500 font-bold">{booking.userEmail || 'Guest'}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {formatDateTime(booking.timestamp)}
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold text-ocean-primary">₱{(booking.total || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {booking.payment?.method && (
+                        <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
+                      )}
+                      {booking.payment?.provider && (
+                        <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                      )}
+                      {booking.email?.sent === true && (
+                        <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
+                      )}
+                      {booking.email?.sent === false && (
+                        <span className="px-2 py-0.5 bg-red-500/10 rounded text-[10px] text-red-600 font-bold uppercase tracking-wider">Email Failed</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {booking.items?.slice(0, 6).map((item: any, idx: number) => (
+                        <span key={idx} className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">{item.name}</span>
+                      ))}
+                      {booking.items?.length > 6 && (
+                        <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">+{booking.items.length - 6} more</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+                {bookings.length === 0 && (
+                  <div className="text-center py-20 opacity-50">
+                    <Calendar size={40} className="mx-auto mb-4 text-gray-400" />
+                    <p className="text-sm">No bookings yet</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'users' && (
+            <motion.div 
+              key="users"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-4"
+            >
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">User Management</h4>
+              <div className="text-center py-20 opacity-50">
+                <User size={40} className="mx-auto mb-4 text-gray-400" />
+                <p className="text-sm">User management features coming soon</p>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'bookings' && (
+            <motion.div 
+              key="bookings"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-4"
+            >
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">All Bookings</h4>
+              <div className="space-y-3">
+                <input
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                  placeholder="Search receipt, email, name, phone, items..."
+                  className="input-modern"
+                />
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {[
+                    { key: 'all', label: 'All' },
+                    { key: 'emailSent', label: 'Email Sent' },
+                    { key: 'emailFailed', label: 'Email Failed' },
+                    { key: 'ewallet', label: 'E-Wallet' },
+                    { key: 'card', label: 'Card' },
+                  ].map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setBookingFilter(f.key as any)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                        bookingFilter === (f.key as any)
+                          ? 'bg-ocean-deep text-white shadow-lg'
+                          : 'text-gray-400 hover:text-ocean-deep bg-white/60'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredBookings.map((booking) => (
+                <button key={booking.id} onClick={() => setReceiptBooking(booking)} className="w-full text-left p-4 glass-card rounded-2xl space-y-3 border-l-4 border-sunset-vibrant hover:shadow-xl transition-all">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-bold text-ocean-deep">{booking.receiptNo || booking.id}</p>
+                      <p className="text-[10px] text-gray-500 font-bold">{booking.userEmail || 'Guest'}</p>
+                      <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                        <Clock size={10} /> {formatDateTime(booking.timestamp)}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-ocean-primary">₱{(booking.total || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {booking.customer?.fullName && (
+                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold">{booking.customer.fullName}</span>
+                    )}
+                    {booking.payment?.method && (
+                      <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
+                    )}
+                    {booking.payment?.provider && (
+                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                    )}
+                    {booking.status && (
+                      <span className="px-2 py-0.5 bg-sunset-vibrant/10 rounded text-[10px] text-sunset-vibrant font-bold uppercase tracking-wider">{booking.status}</span>
+                    )}
+                    {booking.email?.sent === true && (
+                      <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
+                    )}
+                    {booking.email?.sent === false && (
+                      <span className="px-2 py-0.5 bg-red-500/10 rounded text-[10px] text-red-600 font-bold uppercase tracking-wider">Email Failed</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {booking.items?.slice(0, 10).map((item: any, idx: number) => (
+                      <span key={idx} className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">{item.name}</span>
+                    ))}
+                    {booking.items?.length > 10 && (
+                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">+{booking.items.length - 10} more</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+              {filteredBookings.length === 0 && (
+                <div className="text-center py-20 opacity-50">
+                  <Calendar size={40} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-sm">No bookings found</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'settings' && (
+            <motion.div 
+              key="settings"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-6"
+            >
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">Admin Settings</h4>
+              <div className="space-y-4">
+                <div className="p-4 glass-card rounded-2xl">
+                  <p className="text-sm font-bold text-ocean-deep mb-2">System Status</p>
+                  <p className="text-xs text-gray-500">All systems operational</p>
+                </div>
+                <div className="p-4 glass-card rounded-2xl">
+                  <p className="text-sm font-bold text-ocean-deep mb-2">Database</p>
+                  <p className="text-xs text-gray-500">Firebase Realtime Database connected</p>
+                </div>
+                <div className="p-4 glass-card rounded-2xl">
+                  <p className="text-sm font-bold text-ocean-deep mb-2">Authentication</p>
+                  <p className="text-xs text-gray-500">Firebase Auth active</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
