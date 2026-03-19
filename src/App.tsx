@@ -24,6 +24,7 @@ import {
   User, 
   Trees,
   CheckCircle2,
+  Download,
   Phone,
   Mail,
   MapPin,
@@ -40,7 +41,8 @@ import {
   CreditCard,
   ChevronRight,
   Sun,
-  Clock
+  Clock,
+  Star
 } from 'lucide-react';
 import { Screen, CartItem } from './types';
 import { TOURS, FACILITIES } from './data';
@@ -140,6 +142,8 @@ export default function App() {
     setCurrentScreen(screen);
   };
 
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
+
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const exists = prev.some(i => i.id === item.id && i.type === item.type);
@@ -236,7 +240,7 @@ export default function App() {
             <SplashScreen onFinish={() => navigate('home')} />
           )}
           {currentScreen === 'home' && (
-            <HomeScreen onNavigate={navigate} />
+            <HomeScreen user={user} isAdmin={isAdmin} onNavigate={navigate} />
           )}
           {currentScreen === 'discover' && (
             <DiscoverScreen 
@@ -308,6 +312,9 @@ export default function App() {
           <NavButton icon={<Compass size={22} />} active={currentScreen === 'discover'} onClick={() => navigate('discover')} />
           <NavButton icon={<Calendar size={22} />} active={currentScreen === 'reserve'} onClick={() => navigate('reserve')} />
           <NavButton icon={<User size={22} />} active={currentScreen === 'profile'} onClick={() => navigate('profile')} />
+          {isAdmin && (
+            <NavButton icon={<ShieldCheck size={22} />} active={currentScreen === 'admin'} onClick={() => navigate('admin')} />
+          )}
         </nav>
       )}
     </div>
@@ -396,13 +403,21 @@ function NavButton({ icon, active, onClick }: { icon: React.ReactNode, active: b
   );
 }
 
-function HomeScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; isAdmin: boolean; onNavigate: (s: Screen) => void }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  const filteredItems = [...TOURS, ...FACILITIES.map(f => ({ ...f, title: f.name }))].filter(item => 
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ('description' in item && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col h-full"
+      className="flex flex-col h-full relative"
     >
       {/* Hero Section */}
       <div className="relative h-72">
@@ -415,24 +430,137 @@ function HomeScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
           <h2 className="text-white text-4xl font-display font-bold mb-6 tracking-tight">Parola Park</h2>
           
           {/* Search Bar */}
-          <div className="w-full max-w-xs relative group">
+          <div className="w-full max-w-xs relative group z-50">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none transition-colors group-focus-within:text-ocean-primary">
               <Search size={18} className="text-gray-400" />
             </div>
             <input 
               type="text" 
               placeholder="Search activities..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSearchResults(e.target.value.length > 0);
+              }}
+              onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
               className="w-full h-12 pl-12 pr-4 bg-white/90 backdrop-blur-sm rounded-2xl text-sm focus:outline-none focus:bg-white transition-all shadow-lg"
             />
+
+            {/* Search Results Dropdown */}
+            <AnimatePresence>
+              {showSearchResults && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-sand-muted z-50"
+                >
+                  <div className="max-h-64 overflow-y-auto p-2">
+                    {filteredItems.length > 0 ? (
+                      filteredItems.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setSearchQuery('');
+                            setShowSearchResults(false);
+                            onNavigate('reserve');
+                          }}
+                          className="w-full flex items-center gap-4 p-3 hover:bg-sand-light rounded-2xl transition-colors text-left"
+                        >
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-sand-muted flex-shrink-0">
+                            <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-ocean-deep">{item.title}</p>
+                            <p className="text-xs text-gray-500">₱{item.price.toLocaleString()}</p>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-sm text-gray-500">No results found</div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
+      {/* Backdrop for Search Results */}
+      {showSearchResults && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[2px]" 
+          onClick={() => setShowSearchResults(false)}
+        />
+      )}
+
       {/* Main Buttons Row */}
-      <div className="flex justify-center gap-4 p-6 -mt-8 z-10">
+      <div className="flex flex-wrap justify-center gap-4 p-6 -mt-8 z-10">
         <HomeActionButton icon={<Search size={24} />} label="Discover" onClick={() => onNavigate('discover')} />
         <HomeActionButton icon={<Calendar size={24} />} label="Reserve" onClick={() => onNavigate('reserve')} />
-        <HomeActionButton icon={<User size={24} />} label="Sign In" onClick={() => onNavigate('auth')} />
+        {user ? (
+          <HomeActionButton icon={<User size={24} />} label="Profile" onClick={() => onNavigate('profile')} />
+        ) : (
+          <HomeActionButton icon={<User size={24} />} label="Sign In" onClick={() => onNavigate('auth')} />
+        )}
+        {isAdmin && (
+          <HomeActionButton icon={<ShieldCheck size={24} />} label="Admin" onClick={() => onNavigate('admin')} />
+        )}
+      </div>
+
+      {/* Weather & Info Bar */}
+      <div className="px-6 py-4 flex items-center justify-between">
+        <div className="glass-card flex items-center gap-4 px-5 py-3 rounded-2xl border-none shadow-sm">
+          <div className="w-10 h-10 bg-sunset-soft/20 rounded-xl flex items-center justify-center">
+            <Sun className="text-sunset-vibrant animate-pulse" size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Current Weather</p>
+            <p className="text-sm font-bold text-ocean-deep">29°C Sunny</p>
+          </div>
+        </div>
+        <div className="glass-card flex items-center gap-4 px-5 py-3 rounded-2xl border-none shadow-sm">
+          <div className="w-10 h-10 bg-ocean-primary/10 rounded-xl flex items-center justify-center">
+            <Clock className="text-ocean-primary" size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Status</p>
+            <p className="text-sm font-bold text-green-500">Open Now</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Featured Section */}
+      <div className="px-6 py-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-display font-bold text-ocean-deep">Featured Tours</h3>
+          <button onClick={() => onNavigate('discover')} className="text-xs font-bold text-ocean-primary flex items-center gap-1">
+            View All <ArrowRight size={14} />
+          </button>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6">
+          {TOURS.slice(0, 2).map((tour) => (
+            <motion.div 
+              key={tour.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onNavigate('reserve')}
+              className="min-w-[280px] relative h-48 rounded-3xl overflow-hidden shadow-lg group cursor-pointer"
+            >
+              <img src={tour.image} alt={tour.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1 bg-yellow-400 px-1.5 py-0.5 rounded-lg">
+                    <Star size={10} className="fill-black text-black" />
+                    <span className="text-[10px] font-bold text-black">{tour.rating}</span>
+                  </div>
+                </div>
+                <h4 className="text-white font-bold text-lg">{tour.title}</h4>
+                <p className="text-white/70 text-xs line-clamp-1">{tour.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* About Section */}
@@ -591,6 +719,32 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
         </div>
       </div>
 
+      <div className="space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Reviews</h3>
+        <div className="space-y-4">
+          {[
+            { user: 'Juan D.', rating: 5, comment: 'Amazing sunset! The view from the lighthouse is breathtaking.', date: '2 days ago' },
+            { user: 'Maria S.', rating: 4, comment: 'Very historical place. The guides are very knowledgeable.', date: '1 week ago' },
+          ].map((review, i) => (
+            <div key={i} className="glass-card p-5 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm text-ocean-deep">{review.user}</p>
+                <span className="text-[10px] text-gray-400">{review.date}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(review.rating)].map((_, i) => (
+                  <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
+              <p className="text-sm text-gray-600 italic">"{review.comment}"</p>
+            </div>
+          ))}
+          <button className="w-full py-4 text-xs font-bold text-ocean-primary hover:text-ocean-deep transition-colors">
+            Read all 428 reviews
+          </button>
+        </div>
+      </div>
+
       <button onClick={() => onNavigate('reserve')} className="btn-luxury w-full">
         Reserve
       </button>
@@ -734,6 +888,17 @@ function ReserveScreen({
                           }`}>
                             {tour.title}
                           </h4>
+                          {tour.rating && (
+                            <div className="flex items-center gap-1 mb-2">
+                              <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                              <span className={`text-xs font-bold ${selectedTours.some(i => i.id === tour.id) ? 'text-white/90' : 'text-gray-700'}`}>
+                                {tour.rating}
+                              </span>
+                              <span className={`text-xs ${selectedTours.some(i => i.id === tour.id) ? 'text-white/60' : 'text-gray-400'}`}>
+                                ({tour.reviews})
+                              </span>
+                            </div>
+                          )}
                           <p className={`text-sm leading-relaxed mb-3 ${
                             selectedTours.some(i => i.id === tour.id) ? 'text-white/80' : 'text-gray-600'
                           }`}>
@@ -838,11 +1003,22 @@ function ReserveScreen({
                             }`}>
                               {item.name}
                             </h4>
-                            <p className={`text-sm ${
-                              selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/70' : 'text-gray-500'
-                            }`}>
-                              {item.category}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className={`text-sm ${
+                                selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/70' : 'text-gray-500'
+                              }`}>
+                                {item.category}
+                              </p>
+                              {item.rating && (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1 h-1 rounded-full bg-gray-300" />
+                                  <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                                  <span className={`text-xs font-bold ${selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/90' : 'text-gray-700'}`}>
+                                    {item.rating}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -977,7 +1153,7 @@ function AuthScreen({
       }
 
       if (email.toLowerCase() === ADMIN_EMAIL) {
-        onSuccess('admin');
+        onSuccess();
         return;
       }
 
@@ -1010,9 +1186,18 @@ function AuthScreen({
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setInfo(`Password reset link sent to ${email}`);
+      setInfo(`Password reset link sent to ${email}. Check your inbox and spam/junk.`);
     } catch (err: any) {
-      setError(err?.message || 'Failed to send reset email');
+      const code = typeof err?.code === 'string' ? err.code : null;
+      if (code === 'auth/user-not-found') {
+        setError('No account exists for this email. Create it in Firebase Auth first, then try again.');
+      } else if (code === 'auth/invalid-email') {
+        setError('Invalid email format.');
+      } else if (code === 'auth/too-many-requests') {
+        setError('Too many requests. Please wait a few minutes and try again.');
+      } else {
+        setError(err?.message || 'Failed to send reset email');
+      }
     } finally {
       setLoading(false);
     }
@@ -1219,11 +1404,11 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
     >
       <AnimatePresence>
         {(modal || receiptBooking) && (
-          <motion.div 
+            <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] bg-ocean-deep/90 backdrop-blur-md p-8 flex flex-col"
+              className="absolute inset-0 z-[100] bg-ocean-deep/90 backdrop-blur-md p-4 sm:p-8 flex flex-col"
           >
             <div className="flex items-center justify-between mb-10">
               <h3 className="text-2xl font-display font-bold text-white capitalize">{receiptBooking ? 'receipt' : modal}</h3>
@@ -1240,7 +1425,9 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
             
             <div className="flex-1 overflow-y-auto space-y-4">
               {receiptBooking && (
-                <ReceiptCard booking={receiptBooking} />
+                <div className="flex justify-center">
+                  <ReceiptCard booking={receiptBooking} />
+                </div>
               )}
               {modal === 'payment' && (
                 <div className="space-y-4">
@@ -1495,16 +1682,16 @@ function ReceiptCard({ booking }: { booking: any }) {
   const dateLabel = booking?.timestamp ? new Date(booking.timestamp).toLocaleString() : '—';
 
   return (
-    <div className="bg-white rounded-[32px] p-6 space-y-6 shadow-2xl">
+    <div className="bg-white rounded-[32px] p-6 sm:p-8 space-y-6 shadow-2xl w-full max-w-[860px]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Receipt</p>
-          <p className="text-xl font-display font-bold text-ocean-deep break-words">{receiptNo}</p>
+          <p className="text-2xl sm:text-3xl font-display font-bold text-ocean-deep break-words">{receiptNo}</p>
           <p className="text-xs text-gray-500 mt-1">{dateLabel}</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total</p>
-          <p className="text-2xl font-display font-bold text-sunset-vibrant">₱{total.toLocaleString()}</p>
+          <p className="text-3xl font-display font-bold text-sunset-vibrant">₱{total.toLocaleString()}</p>
         </div>
       </div>
 
@@ -2121,6 +2308,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
   const [receiptBooking, setReceiptBooking] = useState<any | null>(null);
   const [bookingSearch, setBookingSearch] = useState('');
   const [bookingFilter, setBookingFilter] = useState<'all' | 'emailSent' | 'emailFailed' | 'ewallet' | 'card'>('all');
+  const [userSearch, setUserSearch] = useState('');
 
   const toTimestampMs = (value: any): number | null => {
     if (typeof value === 'number') return value;
@@ -2173,10 +2361,160 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
     })
     .sort((a, b) => (toTimestampMs(b.timestamp) || 0) - (toTimestampMs(a.timestamp) || 0));
 
+  const bookingCountByUserId = bookings.reduce((acc: Record<string, number>, b: any) => {
+    if (!b?.userId) return acc;
+    acc[b.userId] = (acc[b.userId] || 0) + 1;
+    return acc;
+  }, {});
+
+  const normalizedUserSearch = userSearch.trim().toLowerCase();
+  const filteredUsers = users
+    .filter((u) => {
+      if (!normalizedUserSearch) return true;
+      const haystack = [u.fullName, u.email, u.phoneNumber, u.address, u.uid]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedUserSearch);
+    })
+    .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+
+  const csvValue = (value: any) => {
+    if (value === null || value === undefined) return '';
+    const s = String(value);
+    const escaped = s.replace(/"/g, '""');
+    if (/[",\n\r]/.test(escaped)) return `"${escaped}"`;
+    return escaped;
+  };
+
+  const toCsv = (headers: string[], rows: any[][]) => {
+    const lines = [headers, ...rows].map((row) => row.map(csvValue).join(','));
+    return lines.join('\r\n');
+  };
+
+  const downloadCsv = (filename: string, headers: string[], rows: any[][]) => {
+    const csv = `\uFEFF${toCsv(headers, rows)}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+
+  const toIso = (timestamp: any) => {
+    const ms = toTimestampMs(timestamp);
+    if (!ms) return '';
+    return new Date(ms).toISOString();
+  };
+
+  const exportBookingsCsv = () => {
+    const headers = [
+      'receiptNo',
+      'bookingId',
+      'createdAt',
+      'userEmail',
+      'customerName',
+      'customerPhone',
+      'customerAddress',
+      'paymentMethod',
+      'paymentProvider',
+      'status',
+      'total',
+      'items',
+      'emailSent',
+      'emailProvider',
+      'emailError',
+    ];
+
+    const rows = filteredBookings.map((b) => {
+      const items = Array.isArray(b.items) ? b.items : [];
+      const itemsLabel = items.map((i: any) => `${i?.name ?? ''}${typeof i?.price === 'number' ? ` (${i.price})` : ''}`).join(' | ');
+      return [
+        b.receiptNo || '',
+        b.bookingId || b.id || '',
+        toIso(b.timestamp),
+        b.userEmail || b.customer?.email || '',
+        b.customer?.fullName || '',
+        b.customer?.phoneNumber || '',
+        b.customer?.address || '',
+        b.payment?.method || b.paymentMethod || '',
+        b.payment?.provider || '',
+        b.status || '',
+        b.total ?? '',
+        itemsLabel,
+        b.email?.sent === true ? 'true' : b.email?.sent === false ? 'false' : '',
+        b.email?.provider || '',
+        b.email?.errorMessage || '',
+      ];
+    });
+
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(`bookings-${date}.csv`, headers, rows);
+  };
+
+  const exportUsersCsv = () => {
+    const headers = [
+      'uid',
+      'fullName',
+      'email',
+      'phoneNumber',
+      'address',
+      'profileComplete',
+      'bookingsCount',
+      'createdAt',
+      'updatedAt',
+    ];
+
+    const rows = filteredUsers.map((u) => [
+      u.uid || '',
+      u.fullName || '',
+      u.email || '',
+      u.phoneNumber || '',
+      u.address || '',
+      u.profileComplete ? 'true' : 'false',
+      bookingCountByUserId[u.uid] || 0,
+      toIso(u.createdAt),
+      toIso(u.updatedAt),
+    ]);
+
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(`users-${date}.csv`, headers, rows);
+  };
+
   useEffect(() => {
     // Load users and bookings data
     const loadData = async () => {
       try {
+        const usersRef = ref(db, 'users');
+        onValue(usersRef, (snapshot) => {
+          const data = snapshot.val();
+          if (!data) {
+            setUsers([]);
+            return;
+          }
+
+          const list = Object.keys(data).map((uid) => {
+            const userNode = data[uid] || {};
+            const profile = userNode.profile || {};
+            return {
+              uid,
+              email: profile.email || userNode.email || null,
+              fullName: profile.fullName || null,
+              phoneNumber: profile.phoneNumber || null,
+              address: profile.address || null,
+              profileComplete: Boolean(profile.profileComplete),
+              createdAt: profile.createdAt || null,
+              updatedAt: profile.updatedAt || null,
+            };
+          });
+
+          setUsers(list);
+        });
+
         // Load bookings
         const bookingsRef = ref(db, 'bookings');
         const bookingsQuery = query(bookingsRef, orderByChild('timestamp'));
@@ -2263,7 +2601,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[200] bg-ocean-deep/90 backdrop-blur-md p-8 flex flex-col"
+              className="absolute inset-0 z-[200] bg-ocean-deep/90 backdrop-blur-md p-4 sm:p-8 flex flex-col"
             >
               <div className="flex items-center justify-between mb-10">
                 <h3 className="text-2xl font-display font-bold text-white capitalize">receipt</h3>
@@ -2274,7 +2612,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                   <ArrowRight size={24} className="rotate-180" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto flex justify-center">
                 <ReceiptCard booking={receiptBooking} />
               </div>
             </motion.div>
@@ -2366,11 +2704,57 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               exit={{ opacity: 0, x: 10 }}
               className="space-y-4"
             >
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">User Management</h4>
-              <div className="text-center py-20 opacity-50">
-                <User size={40} className="mx-auto mb-4 text-gray-400" />
-                <p className="text-sm">User management features coming soon</p>
+              <div className="flex items-center justify-between px-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">User Management</h4>
+                <button onClick={exportUsersCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 text-ocean-deep transition-all flex items-center gap-2">
+                  <Download size={16} />
+                  Export CSV
+                </button>
               </div>
+
+              <input
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Search name, email, phone..."
+                className="input-modern"
+              />
+
+              {filteredUsers.map((u) => (
+                <div key={u.uid} className="p-4 glass-card rounded-2xl space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-ocean-deep truncate">{u.fullName || u.email || u.uid}</p>
+                      <p className="text-[10px] text-gray-500 font-bold truncate">{u.email || '—'}</p>
+                      {(u.phoneNumber || u.address) && (
+                        <p className="text-[10px] text-gray-400 truncate">{[u.phoneNumber, u.address].filter(Boolean).join(' • ')}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] uppercase tracking-widest text-gray-400">Bookings</p>
+                      <p className="text-sm font-bold text-ocean-primary">{bookingCountByUserId[u.uid] || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {u.profileComplete && (
+                      <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Profile Complete</span>
+                    )}
+                    {!u.profileComplete && (
+                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">Profile Incomplete</span>
+                    )}
+                    {u.updatedAt && (
+                      <span className="px-2 py-0.5 bg-white/60 rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">Updated {formatDateTime(u.updatedAt)}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-20 opacity-50">
+                  <User size={40} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-sm">No users found</p>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -2382,7 +2766,13 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               exit={{ opacity: 0, x: 10 }}
               className="space-y-4"
             >
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">All Bookings</h4>
+              <div className="flex items-center justify-between px-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">All Bookings</h4>
+                <button onClick={exportBookingsCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 text-ocean-deep transition-all flex items-center gap-2">
+                  <Download size={16} />
+                  Export CSV
+                </button>
+              </div>
               <div className="space-y-3">
                 <input
                   value={bookingSearch}

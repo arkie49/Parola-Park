@@ -119,14 +119,42 @@ const createTransporter = () => {
   });
 };
 
+const extractEmailAddress = (from: string) => {
+  const match = from.match(/<([^>]+)>/);
+  return (match ? match[1] : from).trim();
+};
+
+const extractDomain = (email: string) => {
+  const at = email.lastIndexOf('@');
+  if (at === -1) return null;
+  return email.slice(at + 1).trim().toLowerCase();
+};
+
+const WEBMAIL_DOMAINS = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'yahoo.com.ph',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'icloud.com',
+  'me.com',
+  'aol.com',
+  'proton.me',
+  'protonmail.com',
+]);
+
 const sendWithResend = async ({
   to,
   from,
+  replyTo,
   subject,
   html,
 }: {
   to: string;
   from: string;
+  replyTo?: string;
   subject: string;
   html: string;
 }) => {
@@ -139,6 +167,7 @@ const sendWithResend = async ({
   const result = await resend.emails.send({
     from,
     to,
+    ...(replyTo ? { replyTo } : {}),
     subject,
     html,
   });
@@ -174,19 +203,31 @@ export default async function handler(req: any, res: any) {
   const html = buildReceiptHtml(booking);
 
   if (process.env.RESEND_API_KEY) {
+    const fromAddr = extractEmailAddress(fromEmail);
+    const fromDomain = extractDomain(fromAddr);
+    const shouldUseResendFallbackFrom = Boolean(fromDomain && WEBMAIL_DOMAINS.has(fromDomain));
+    const resendFrom = shouldUseResendFallbackFrom ? (process.env.RESEND_FROM || 'onboarding@resend.dev') : fromEmail;
+    const replyTo = process.env.MAIL_REPLY_TO || (shouldUseResendFallbackFrom ? fromAddr : undefined);
+
     const result = await sendWithResend({
       to,
-      from: fromEmail,
+      from: resendFrom,
+      replyTo,
       subject,
       html,
     });
 
     if (!result.ok) {
-      res.status(500).json({ ok: false, error: result.error, provider: 'resend' });
+      res.status(500).json({
+        ok: false,
+        error: result.error,
+        provider: 'resend',
+        from: resendFrom,
+      });
       return;
     }
 
-    res.status(200).json({ ok: true, provider: 'resend', id: result.id || null });
+    res.status(200).json({ ok: true, provider: 'resend', id: result.id || null, from: resendFrom });
     return;
   }
 

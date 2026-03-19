@@ -12,6 +12,8 @@ export const TOURS: Tour[] = [
     description: 'Explore the 1861 watchtower and historic cannons.',
     price: 10,
     image: t1Img,
+    rating: 4.8,
+    reviews: 124,
   },
   {
     id: 't2',
@@ -19,6 +21,8 @@ export const TOURS: Tour[] = [
     description: 'Experience the best sunset view in town from the lighthouse.',
     price: 0,
     image: t2Img,
+    rating: 4.9,
+    reviews: 210,
   },
   {
     id: 't3',
@@ -26,6 +30,8 @@ export const TOURS: Tour[] = [
     description: 'Professional guide for your group (per day).',
     price: 1000,
     image: t3Img,
+    rating: 4.5,
+    reviews: 89,
   },
 ];
 
@@ -36,6 +42,8 @@ export const FACILITIES: Facility[] = [
     price: 10,
     category: 'Facility',
     image: f1Img,
+    rating: 4.7,
+    reviews: 502,
   },
   {
     id: 'f2',
@@ -43,5 +51,7 @@ export const FACILITIES: Facility[] = [
     price: 1000,
     category: 'Facility',
     image: f2Img,
+    rating: 4.6,
+    reviews: 75,
   },
 ];

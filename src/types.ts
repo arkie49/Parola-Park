@@ -4,6 +4,8 @@ export interface Tour {
   description: string;
   price: number;
   image: string;
+  rating?: number;
+  reviews?: number;
 }
 
 export interface Facility {
@@ -12,6 +14,8 @@ export interface Facility {
   price: number;
   image: string;
   category: 'Equipment' | 'Facility';
+  rating?: number;
+  reviews?: number;
 }
 
 export type Screen = 'splash' | 'home' | 'discover' | 'reserve' | 'profile' | 'auth' | 'checkout' | 'success' | 'admin';

@@ -34,10 +34,13 @@ Add these environment variables in Vercel (Project → Settings → Environment 
 
 - `RESEND_API_KEY`
 - `MAIL_FROM`
+- `RESEND_FROM` (optional)
+- `MAIL_REPLY_TO` (optional)
 
 Notes:
 
-- `MAIL_FROM` must be a verified sender in Resend (or use `onboarding@resend.dev` for testing).
+- `MAIL_FROM` must be a verified sender in Resend.
+- If you want to keep using a Gmail address, set `RESEND_FROM=onboarding@resend.dev` and `MAIL_REPLY_TO=your@gmail.com` (emails will be sent “from” Resend’s sender, but replies go to your Gmail).
 
 ### SMTP (fallback)
 
