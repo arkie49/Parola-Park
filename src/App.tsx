@@ -42,7 +42,8 @@ import {
   ChevronRight,
   Sun,
   Clock,
-  Star
+  Star,
+  LogOut
 } from 'lucide-react';
 import { Screen, CartItem } from './types';
 import { TOURS, FACILITIES } from './data';
@@ -137,6 +138,11 @@ export default function App() {
         });
         return;
       }
+    }
+
+    if (isAdmin && screen !== 'admin') {
+      setCurrentScreen('admin');
+      return;
     }
 
     setCurrentScreen(screen);
@@ -237,7 +243,7 @@ export default function App() {
       <div className="flex-1 overflow-y-auto scroll-smooth">
         <AnimatePresence mode="wait">
           {currentScreen === 'splash' && (
-            <SplashScreen onFinish={() => navigate('home')} />
+            <SplashScreen onFinish={() => setCurrentScreen(isAdmin ? 'admin' : 'home')} />
           )}
           {currentScreen === 'home' && (
             <HomeScreen user={user} isAdmin={isAdmin} onNavigate={navigate} />
@@ -300,7 +306,7 @@ export default function App() {
             <SuccessScreen onHome={() => navigate('home')} />
           )}
           {currentScreen === 'admin' && (
-            <AdminScreen onBack={() => navigate('home')} />
+            <AdminScreen onLogout={() => { signOut(auth).then(() => setCurrentScreen('home')); }} />
           )}
         </AnimatePresence>
       </div>
@@ -1153,7 +1159,7 @@ function AuthScreen({
       }
 
       if (email.toLowerCase() === ADMIN_EMAIL) {
-        onSuccess();
+        onSuccess('admin');
         return;
       }
 
@@ -2407,7 +2413,7 @@ function SuccessScreen({ onHome }: { onHome: () => void }) {
   );
 }
 
-function AdminScreen({ onBack }: { onBack: () => void }) {
+function AdminScreen({ onLogout }: { onLogout: () => void }) {
   console.log('AdminScreen component rendered');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'bookings' | 'settings'>('dashboard');
   const [users, setUsers] = useState<any[]>([]);
@@ -2655,11 +2661,12 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
     >
       {/* Admin Header */}
       <div className="p-8 pb-4">
-        <div className="flex items-center gap-4 mb-6">
-          <button onClick={onBack} className="p-2 hover:bg-sand-muted dark:bg-[#1E293B] rounded-xl transition-colors">
-            <Home size={20} className="text-ocean-deep dark:text-gray-200" />
-          </button>
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Admin Dashboard</h2>
+          <button onClick={onLogout} className="p-2 hover:bg-red-500/10 rounded-xl transition-colors flex items-center gap-2 group">
+            <span className="text-xs font-bold uppercase tracking-widest text-red-500 group-hover:text-red-600 transition-colors">Logout</span>
+            <LogOut size={20} className="text-red-500 group-hover:text-red-600 transition-colors" />
+          </button>
         </div>
         
         <div className="p-6 glass-card rounded-[32px] relative overflow-hidden">
