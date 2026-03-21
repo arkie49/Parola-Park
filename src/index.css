@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   --color-ocean-deep: #0F172A;
   --color-ocean-primary: #1E40AF;
@@ -18,28 +20,28 @@
 
 @layer base {
   body {
-    @apply bg-sand-light text-ocean-deep font-sans antialiased;
+    @apply bg-sand-light text-ocean-deep font-sans antialiased transition-colors duration-300 dark:bg-[#0F172A] dark:text-gray-200;
   }
 }
 
 .glass-card {
-  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl shadow-ocean-deep/5;
+  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl shadow-ocean-deep/5 transition-all duration-300 dark:bg-black/40 dark:border-white/5 dark:shadow-black/30;
 }
 
 .glass-dark {
-  @apply bg-ocean-deep/80 backdrop-blur-lg border border-white/10 text-white;
+  @apply bg-ocean-deep/80 backdrop-blur-lg border border-white/10 text-white transition-all duration-300 dark:bg-white/10 dark:border-white/5;
 }
 
 .input-modern {
-  @apply w-full h-14 px-6 bg-white border border-sand-muted rounded-2xl focus:outline-none focus:ring-2 focus:ring-ocean-primary/20 transition-all placeholder:text-gray-400;
+  @apply w-full h-14 px-6 bg-white border border-sand-muted rounded-2xl focus:outline-none focus:ring-2 focus:ring-ocean-primary/20 transition-all placeholder:text-gray-400 dark:bg-black/40 dark:border-white/10 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-ocean-primary/50;
 }
 
 .btn-luxury {
-  @apply bg-ocean-deep text-white py-4 px-8 rounded-2xl font-semibold tracking-wide active:scale-95 transition-all hover:bg-ocean-primary shadow-lg shadow-ocean-deep/10;
+  @apply bg-ocean-deep text-white py-4 px-8 rounded-2xl font-semibold tracking-wide active:scale-95 transition-all hover:bg-ocean-primary shadow-lg shadow-ocean-deep/10 dark:bg-ocean-primary dark:shadow-black/30 dark:hover:bg-blue-400;
 }
 
 .btn-outline {
-  @apply border-2 border-ocean-deep text-ocean-deep py-4 px-8 rounded-2xl font-semibold active:scale-95 transition-all hover:bg-ocean-deep hover:text-white;
+  @apply border-2 border-ocean-deep text-ocean-deep py-4 px-8 rounded-2xl font-semibold active:scale-95 transition-all hover:bg-ocean-deep hover:text-white dark:border-ocean-primary dark:text-ocean-primary dark:hover:bg-ocean-primary dark:hover:text-white;
 }
 
 .nav-item-active {

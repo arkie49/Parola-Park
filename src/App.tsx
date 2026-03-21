@@ -219,7 +219,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative h-screen w-full max-w-md mx-auto bg-sand-light overflow-hidden shadow-2xl flex flex-col font-sans">
+    <div className="relative h-screen w-full max-w-md mx-auto bg-sand-light dark:bg-[#0F172A] overflow-hidden shadow-2xl flex flex-col font-sans">
       {/* App Header */}
       {currentScreen !== 'splash' && (
         <header className="bg-ocean-deep p-6 flex items-center gap-4 text-white shadow-lg z-50">
@@ -307,7 +307,7 @@ export default function App() {
 
       {/* Persistent Bottom Nav */}
       {currentScreen !== 'splash' && currentScreen !== 'auth' && currentScreen !== 'checkout' && currentScreen !== 'success' && currentScreen !== 'admin' && (
-        <nav className="h-20 bg-white/80 backdrop-blur-md border-t border-sand-muted flex items-center justify-around px-8 z-50">
+        <nav className="h-20 bg-white/80 dark:bg-[#1E293B]/90 backdrop-blur-md border-t border-sand-muted dark:border-white/5 flex items-center justify-around px-8 z-50">
           <NavButton icon={<Home size={22} />} active={currentScreen === 'home'} onClick={() => navigate('home')} />
           <NavButton icon={<Compass size={22} />} active={currentScreen === 'discover'} onClick={() => navigate('discover')} />
           <NavButton icon={<Calendar size={22} />} active={currentScreen === 'reserve'} onClick={() => navigate('reserve')} />
@@ -327,7 +327,7 @@ function SplashScreen({ onFinish }: { onFinish: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="h-full w-full relative flex flex-col items-center justify-center overflow-hidden bg-ocean-deep"
+      className="h-full w-full relative flex flex-col items-center justify-center overflow-hidden bg-ocean-deep dark:bg-[#0F172A]"
     >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
@@ -345,7 +345,7 @@ function SplashScreen({ onFinish }: { onFinish: () => void }) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-          className="bg-white/10 p-6 rounded-[40px] backdrop-blur-xl border border-white/20 shadow-2xl"
+          className="bg-white/10 dark:bg-white/5 p-6 rounded-[40px] backdrop-blur-xl border border-white/20 shadow-2xl"
         >
           <Trees size={80} className="text-sunset-vibrant" />
         </motion.div>
@@ -377,7 +377,7 @@ function SplashScreen({ onFinish }: { onFinish: () => void }) {
         >
           <button 
             onClick={onFinish}
-            className="w-full py-5 bg-sunset-vibrant text-ocean-deep rounded-3xl font-bold text-lg shadow-2xl shadow-sunset-vibrant/20 active:scale-95 transition-all hover:bg-white"
+            className="w-full py-5 bg-sunset-vibrant text-ocean-deep dark:text-gray-200 rounded-3xl font-bold text-lg shadow-2xl shadow-sunset-vibrant/20 active:scale-95 transition-all hover:bg-white dark:bg-[#1E293B]"
           >
             Start Exploring
           </button>
@@ -396,7 +396,7 @@ function NavButton({ icon, active, onClick }: { icon: React.ReactNode, active: b
   return (
     <button 
       onClick={onClick} 
-      className={`p-3 rounded-2xl transition-all duration-300 ${active ? 'bg-ocean-deep text-white shadow-md' : 'text-gray-400 hover:text-ocean-deep'}`}
+      className={`p-3 rounded-2xl transition-all duration-300 ${active ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-md' : 'text-gray-400 dark:text-gray-400 hover:text-ocean-deep dark:text-gray-200'}`}
     >
       {icon}
     </button>
@@ -432,7 +432,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
           {/* Search Bar */}
           <div className="w-full max-w-xs relative group z-50">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none transition-colors group-focus-within:text-ocean-primary">
-              <Search size={18} className="text-gray-400" />
+              <Search size={18} className="text-gray-400 dark:text-gray-400" />
             </div>
             <input 
               type="text" 
@@ -443,7 +443,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
                 setShowSearchResults(e.target.value.length > 0);
               }}
               onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
-              className="w-full h-12 pl-12 pr-4 bg-white/90 backdrop-blur-sm rounded-2xl text-sm focus:outline-none focus:bg-white transition-all shadow-lg"
+              className="w-full h-12 pl-12 pr-4 bg-white/90 dark:bg-[#1E293B]/90 backdrop-blur-sm rounded-2xl text-sm focus:outline-none focus:bg-white dark:bg-[#1E293B] transition-all shadow-lg"
             />
 
             {/* Search Results Dropdown */}
@@ -453,7 +453,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-sand-muted z-50"
+                  className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1E293B] rounded-3xl shadow-2xl overflow-hidden border border-sand-muted dark:border-white/10 z-50"
                 >
                   <div className="max-h-64 overflow-y-auto p-2">
                     {filteredItems.length > 0 ? (
@@ -465,19 +465,19 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
                             setShowSearchResults(false);
                             onNavigate('reserve');
                           }}
-                          className="w-full flex items-center gap-4 p-3 hover:bg-sand-light rounded-2xl transition-colors text-left"
+                          className="w-full flex items-center gap-4 p-3 hover:bg-sand-light dark:bg-[#0B1120] rounded-2xl transition-colors text-left"
                         >
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-sand-muted flex-shrink-0">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-sand-muted dark:bg-[#1E293B] flex-shrink-0">
                             <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                           </div>
                           <div>
-                            <p className="font-bold text-sm text-ocean-deep">{item.title}</p>
-                            <p className="text-xs text-gray-500">₱{item.price.toLocaleString()}</p>
+                            <p className="font-bold text-sm text-ocean-deep dark:text-gray-200">{item.title}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-300">₱{item.price.toLocaleString()}</p>
                           </div>
                         </button>
                       ))
                     ) : (
-                      <div className="p-4 text-center text-sm text-gray-500">No results found</div>
+                      <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-300">No results found</div>
                     )}
                   </div>
                 </motion.div>
@@ -490,7 +490,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
       {/* Backdrop for Search Results */}
       {showSearchResults && (
         <div 
-          className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[2px]" 
+          className="fixed inset-0 bg-black dark:bg-[#0B1120]/20 z-40 backdrop-blur-[2px]" 
           onClick={() => setShowSearchResults(false)}
         />
       )}
@@ -516,8 +516,8 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
             <Sun className="text-sunset-vibrant animate-pulse" size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Current Weather</p>
-            <p className="text-sm font-bold text-ocean-deep">29°C Sunny</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-400">Current Weather</p>
+            <p className="text-sm font-bold text-ocean-deep dark:text-gray-200">29°C Sunny</p>
           </div>
         </div>
         <div className="glass-card flex items-center gap-4 px-5 py-3 rounded-2xl border-none shadow-sm">
@@ -525,7 +525,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
             <Clock className="text-ocean-primary" size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Status</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-400">Status</p>
             <p className="text-sm font-bold text-green-500">Open Now</p>
           </div>
         </div>
@@ -534,7 +534,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
       {/* Featured Section */}
       <div className="px-6 py-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-display font-bold text-ocean-deep">Featured Tours</h3>
+          <h3 className="text-lg font-display font-bold text-ocean-deep dark:text-gray-200">Featured Tours</h3>
           <button onClick={() => onNavigate('discover')} className="text-xs font-bold text-ocean-primary flex items-center gap-1">
             View All <ArrowRight size={14} />
           </button>
@@ -551,8 +551,8 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="flex items-center gap-1 bg-yellow-400 px-1.5 py-0.5 rounded-lg">
-                    <Star size={10} className="fill-black text-black" />
-                    <span className="text-[10px] font-bold text-black">{tour.rating}</span>
+                    <Star size={10} className="fill-black text-black dark:text-gray-200" />
+                    <span className="text-[10px] font-bold text-black dark:text-gray-200">{tour.rating}</span>
                   </div>
                 </div>
                 <h4 className="text-white font-bold text-lg">{tour.title}</h4>
@@ -566,13 +566,13 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
       {/* About Section */}
       <div className="p-8 space-y-8 text-center">
         <div className="space-y-2">
-          <h3 className="text-2xl font-display font-bold text-ocean-deep">About Parola Park</h3>
+          <h3 className="text-2xl font-display font-bold text-ocean-deep dark:text-gray-200">About Parola Park</h3>
           <div className="w-12 h-1 bg-sunset-vibrant mx-auto rounded-full opacity-50" />
         </div>
         
-        <div className="text-left space-y-4 text-sm text-gray-600 leading-relaxed">
+        <div className="text-left space-y-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
           <p>
-            Also known as <span className="font-bold text-ocean-deep">Presing Park</span>, named after the wife of former Mayor Loreto Urieta. This Mountain Park served as a historic watchtower and cannon site built in 1861 to defend against intruders.
+            Also known as <span className="font-bold text-ocean-deep dark:text-gray-200">Presing Park</span>, named after the wife of former Mayor Loreto Urieta. This Mountain Park served as a historic watchtower and cannon site built in 1861 to defend against intruders.
           </p>
           <p>
             Today, you can still find the historic lighthouse and old cannon. The park offers the <span className="font-bold text-ocean-primary">best sunset view in town</span>.
@@ -581,23 +581,23 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
 
         <div className="grid grid-cols-2 gap-4 pt-4">
           <div className="glass-card p-4 rounded-2xl text-center">
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Entrance</p>
-            <p className="text-lg font-bold text-ocean-deep">₱10.00</p>
+            <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Entrance</p>
+            <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱10.00</p>
           </div>
           <div className="glass-card p-4 rounded-2xl text-center">
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Urban Guide</p>
-            <p className="text-lg font-bold text-ocean-deep">₱1,000</p>
+            <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Urban Guide</p>
+            <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱1,000</p>
           </div>
         </div>
 
         <div className="pt-6 space-y-4">
-          <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Contact Tourism Office</h4>
+          <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Contact Tourism Office</h4>
           <div className="flex flex-col gap-3">
-            <a href="tel:09985465917" className="flex items-center gap-3 p-4 glass-card rounded-2xl hover:bg-ocean-deep hover:text-white transition-all">
+            <a href="tel:09985465917" className="flex items-center gap-3 p-4 glass-card rounded-2xl hover:bg-ocean-deep dark:bg-ocean-primary hover:text-white transition-all">
               <Phone size={18} className="text-sunset-vibrant" />
               <span className="text-sm font-medium">0998 546 5917</span>
             </a>
-            <a href="mailto:info.tourismsby@gmail.com" className="flex items-center gap-3 p-4 glass-card rounded-2xl hover:bg-ocean-deep hover:text-white transition-all">
+            <a href="mailto:info.tourismsby@gmail.com" className="flex items-center gap-3 p-4 glass-card rounded-2xl hover:bg-ocean-deep dark:bg-ocean-primary hover:text-white transition-all">
               <Mail size={18} className="text-sunset-vibrant" />
               <span className="text-sm font-medium">info.tourismsby@gmail.com</span>
             </a>
@@ -614,10 +614,10 @@ function HomeActionButton({ icon, label, onClick }: { icon: React.ReactNode, lab
       onClick={onClick} 
       className="flex flex-col items-center gap-3 group"
     >
-      <div className="w-20 h-20 glass-card rounded-3xl flex items-center justify-center text-ocean-deep group-hover:bg-ocean-deep group-hover:text-white transition-all duration-300">
+      <div className="w-20 h-20 glass-card rounded-3xl flex items-center justify-center text-ocean-deep dark:text-gray-200 group-hover:bg-ocean-deep dark:bg-ocean-primary group-hover:text-white transition-all duration-300">
         {icon}
       </div>
-      <span className="text-xs font-bold uppercase tracking-widest text-ocean-deep/60 group-hover:text-ocean-deep transition-colors">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-widest text-ocean-deep dark:text-gray-200/60 group-hover:text-ocean-deep dark:text-gray-200 transition-colors">{label}</span>
     </button>
   );
 }
@@ -642,14 +642,14 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
       className="p-8 space-y-10"
     >
       <div className="flex items-center gap-4">
-        <button onClick={onBack} className="p-2 hover:bg-sand-muted rounded-xl transition-colors">
-          <Home size={20} className="text-ocean-deep" />
+        <button onClick={onBack} className="p-2 hover:bg-sand-muted dark:bg-[#1E293B] rounded-xl transition-colors">
+          <Home size={20} className="text-ocean-deep dark:text-gray-200" />
         </button>
-        <h2 className="text-3xl font-display font-bold text-ocean-deep">Discover</h2>
+        <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Discover</h2>
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Gallery</h3>
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Gallery</h3>
         <div className="grid grid-cols-2 gap-4">
           {gallery.map((img, idx) => (
             <div key={`${img.alt}-${idx}`} className="relative h-32 rounded-3xl overflow-hidden glass-card">
@@ -661,32 +661,32 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Information</h3>
-        <div className="glass-card p-6 rounded-3xl space-y-5 text-sm text-gray-600 leading-relaxed">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Information</h3>
+        <div className="glass-card p-6 rounded-3xl space-y-5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
           <div className="flex items-start gap-4">
             <MapPin size={18} className="text-sunset-vibrant mt-0.5" />
             <div className="space-y-1">
-              <p className="font-bold text-ocean-deep">Address</p>
+              <p className="font-bold text-ocean-deep dark:text-gray-200">Address</p>
               <p>Parola Park (Presing Park), Sablayan, Occidental Mindoro, Philippines</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
             <Info size={18} className="text-sunset-vibrant mt-0.5" />
             <div className="space-y-1">
-              <p className="font-bold text-ocean-deep">Hours</p>
+              <p className="font-bold text-ocean-deep dark:text-gray-200">Hours</p>
               <p>Daily 6:00 AM – 6:00 PM (best view near sunset)</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
             <History size={18} className="text-sunset-vibrant mt-0.5" />
             <div className="space-y-1">
-              <p className="font-bold text-ocean-deep">About</p>
+              <p className="font-bold text-ocean-deep dark:text-gray-200">About</p>
               <p>Historic watchtower and cannon site built in 1861, featuring a lighthouse and panoramic views.</p>
             </div>
           </div>
 
           {/* Map Section */}
-          <div className="w-full h-48 rounded-2xl overflow-hidden border border-sand-muted shadow-inner">
+          <div className="w-full h-48 rounded-2xl overflow-hidden border border-sand-muted dark:border-white/10 shadow-inner">
             <iframe 
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d46300.01451212201!2d120.72520191666352!3d12.835759779404482!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bb9b2ccfbd5fab%3A0xe5220ae758f9007a!2sSablayan%20Parola%20Park!5e1!3m2!1sen!2sph!4v1773571253072!5m2!1sen!2sph"
               className="w-full h-full border-0"
@@ -697,30 +697,30 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <a href="tel:09985465917" className="flex items-center gap-3 p-4 rounded-2xl bg-white/50 hover:bg-ocean-deep hover:text-white transition-all">
+            <a href="tel:09985465917" className="flex items-center gap-3 p-4 rounded-2xl bg-white/50 dark:bg-[#1E293B]/50 hover:bg-ocean-deep dark:bg-ocean-primary hover:text-white transition-all">
               <Phone size={18} className="text-sunset-vibrant" />
               <span className="text-xs font-bold tracking-widest uppercase">Call</span>
             </a>
-            <a href="mailto:info.tourismsby@gmail.com" className="flex items-center gap-3 p-4 rounded-2xl bg-white/50 hover:bg-ocean-deep hover:text-white transition-all">
+            <a href="mailto:info.tourismsby@gmail.com" className="flex items-center gap-3 p-4 rounded-2xl bg-white/50 dark:bg-[#1E293B]/50 hover:bg-ocean-deep dark:bg-ocean-primary hover:text-white transition-all">
               <Mail size={18} className="text-sunset-vibrant" />
               <span className="text-xs font-bold tracking-widest uppercase">Email</span>
             </a>
           </div>
           <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="p-4 rounded-2xl bg-white/50">
-              <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Entrance</p>
-              <p className="text-lg font-bold text-ocean-deep">₱10.00</p>
+            <div className="p-4 rounded-2xl bg-white/50 dark:bg-[#1E293B]/50">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Entrance</p>
+              <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱10.00</p>
             </div>
-            <div className="p-4 rounded-2xl bg-white/50">
-              <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Urban Guide</p>
-              <p className="text-lg font-bold text-ocean-deep">₱1,000</p>
+            <div className="p-4 rounded-2xl bg-white/50 dark:bg-[#1E293B]/50">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Urban Guide</p>
+              <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱1,000</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Reviews</h3>
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Reviews</h3>
         <div className="space-y-4">
           {[
             { user: 'Juan D.', rating: 5, comment: 'Amazing sunset! The view from the lighthouse is breathtaking.', date: '2 days ago' },
@@ -728,18 +728,18 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
           ].map((review, i) => (
             <div key={i} className="glass-card p-5 rounded-3xl space-y-2">
               <div className="flex items-center justify-between">
-                <p className="font-bold text-sm text-ocean-deep">{review.user}</p>
-                <span className="text-[10px] text-gray-400">{review.date}</span>
+                <p className="font-bold text-sm text-ocean-deep dark:text-gray-200">{review.user}</p>
+                <span className="text-[10px] text-gray-400 dark:text-gray-400">{review.date}</span>
               </div>
               <div className="flex items-center gap-1">
                 {[...Array(review.rating)].map((_, i) => (
                   <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
-              <p className="text-sm text-gray-600 italic">"{review.comment}"</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 italic">"{review.comment}"</p>
             </div>
           ))}
-          <button className="w-full py-4 text-xs font-bold text-ocean-primary hover:text-ocean-deep transition-colors">
+          <button className="w-full py-4 text-xs font-bold text-ocean-primary hover:text-ocean-deep dark:text-gray-200 transition-colors">
             Read all 428 reviews
           </button>
         </div>
@@ -777,13 +777,13 @@ function ReserveScreen({
     >
       {/* Hero Section */}
       <div className="relative h-80 bg-gradient-to-br from-ocean-deep via-ocean-primary to-sunset-vibrant">
-        <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 bg-black dark:bg-[#0B1120]/20" />
         <div className="relative h-full flex flex-col items-center justify-center text-center px-8 text-white">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="bg-white/10 backdrop-blur-sm p-4 rounded-3xl mb-8"
+            className="bg-white/10 dark:bg-white/5 backdrop-blur-sm p-4 rounded-3xl mb-8"
           >
             <Calendar size={48} className="text-sunset-soft" />
           </motion.div>
@@ -808,7 +808,7 @@ function ReserveScreen({
         {/* Back Button */}
         <button 
           onClick={onBack} 
-          className="absolute top-8 left-8 p-3 bg-white/10 backdrop-blur-sm rounded-2xl text-white hover:bg-white/20 transition-all"
+          className="absolute top-8 left-8 p-3 bg-white/10 dark:bg-white/5 backdrop-blur-sm rounded-2xl text-white hover:bg-white/20 transition-all"
         >
           <Home size={20} />
         </button>
@@ -816,13 +816,13 @@ function ReserveScreen({
 
       {/* Section Tabs */}
       <div className="px-8 py-6 z-10">
-        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-2 flex shadow-xl">
+        <div className="bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-md rounded-3xl p-2 flex shadow-xl">
           <button
             onClick={() => setActiveSection('tours')}
             className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all ${
               activeSection === 'tours' 
-                ? 'bg-ocean-deep text-white shadow-lg' 
-                : 'text-gray-600 hover:text-ocean-deep'
+                ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg' 
+                : 'text-gray-600 dark:text-gray-300 hover:text-ocean-deep dark:text-gray-200'
             }`}
           >
             Tours
@@ -831,8 +831,8 @@ function ReserveScreen({
             onClick={() => setActiveSection('facilities')}
             className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all ${
               activeSection === 'facilities' 
-                ? 'bg-ocean-deep text-white shadow-lg' 
-                : 'text-gray-600 hover:text-ocean-deep'
+                ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg' 
+                : 'text-gray-600 dark:text-gray-300 hover:text-ocean-deep dark:text-gray-200'
             }`}
           >
             Facilities
@@ -852,8 +852,8 @@ function ReserveScreen({
               className="space-y-8"
             >
               <div className="space-y-6">
-                <h3 className="text-lg font-display font-bold text-ocean-deep">Choose Your Tour</h3>
-                <p className="text-sm text-gray-600">Select one or more tours to add to your reservation</p>
+                <h3 className="text-lg font-display font-bold text-ocean-deep dark:text-gray-200">Choose Your Tour</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Select one or more tours to add to your reservation</p>
               </div>
 
               <div className="grid grid-cols-1 gap-6">
@@ -868,7 +868,7 @@ function ReserveScreen({
                       onClick={() => onToggleCartItem({ id: tour.id, name: tour.title, price: tour.price, type: 'tour' })}
                       className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
                         selectedTours.some(i => i.id === tour.id) 
-                          ? 'bg-ocean-deep text-white shadow-2xl scale-[0.98]' 
+                          ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-2xl scale-[0.98]' 
                           : 'glass-card hover:shadow-xl hover:scale-[1.02]'
                       }`}
                     >
@@ -876,15 +876,15 @@ function ReserveScreen({
                         <div className={`p-3 rounded-2xl flex-shrink-0 ${
                           selectedTours.some(i => i.id === tour.id) 
                             ? 'bg-white/20' 
-                            : 'bg-ocean-deep/10'
+                            : 'bg-ocean-deep dark:bg-ocean-primary/10'
                         }`}>
-                          {tour.id === 't1' && <History size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep'} />}
+                          {tour.id === 't1' && <History size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'} />}
                           {tour.id === 't2' && <Sun size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-sunset-vibrant'} />}
                           {tour.id === 't3' && <User size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-primary'} />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className={`font-display font-bold text-lg mb-1 ${
-                            selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep'
+                            selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'
                           }`}>
                             {tour.title}
                           </h4>
@@ -894,13 +894,13 @@ function ReserveScreen({
                               <span className={`text-xs font-bold ${selectedTours.some(i => i.id === tour.id) ? 'text-white/90' : 'text-gray-700'}`}>
                                 {tour.rating}
                               </span>
-                              <span className={`text-xs ${selectedTours.some(i => i.id === tour.id) ? 'text-white/60' : 'text-gray-400'}`}>
+                              <span className={`text-xs ${selectedTours.some(i => i.id === tour.id) ? 'text-white/60' : 'text-gray-400 dark:text-gray-400'}`}>
                                 ({tour.reviews})
                               </span>
                             </div>
                           )}
                           <p className={`text-sm leading-relaxed mb-3 ${
-                            selectedTours.some(i => i.id === tour.id) ? 'text-white/80' : 'text-gray-600'
+                            selectedTours.some(i => i.id === tour.id) ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
                           }`}>
                             {tour.description}
                           </p>
@@ -938,8 +938,8 @@ function ReserveScreen({
                       <CheckCircle2 size={20} className="text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-ocean-deep">{selectedTours.length} tour{selectedTours.length === 1 ? '' : 's'} selected</h4>
-                      <p className="text-sm text-gray-600">
+                      <h4 className="font-bold text-ocean-deep dark:text-gray-200">{selectedTours.length} tour{selectedTours.length === 1 ? '' : 's'} selected</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         Total: ₱{selectedTours.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
                       </p>
                     </div>
@@ -947,12 +947,12 @@ function ReserveScreen({
                   <div className="space-y-2 pb-4">
                     {selectedTours.map(item => (
                       <div key={item.id} className="flex items-center justify-between text-sm">
-                        <span className="font-bold text-ocean-deep">{item.name}</span>
+                        <span className="font-bold text-ocean-deep dark:text-gray-200">{item.name}</span>
                         <span className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="text-center text-xs font-bold text-gray-600">Selected tours are saved in your cart.</div>
+                  <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-300">Selected tours are saved in your cart.</div>
                 </motion.div>
               )}
             </motion.div>
@@ -967,8 +967,8 @@ function ReserveScreen({
               className="space-y-8"
             >
               <div className="space-y-6">
-                <h3 className="text-lg font-display font-bold text-ocean-deep">Additional Facilities</h3>
-                <p className="text-sm text-gray-600">Select any facilities you'd like to include</p>
+                <h3 className="text-lg font-display font-bold text-ocean-deep dark:text-gray-200">Additional Facilities</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Select any facilities you'd like to include</p>
               </div>
 
               <div className="space-y-6">
@@ -983,7 +983,7 @@ function ReserveScreen({
                       onClick={() => onToggleCartItem({ id: item.id, name: item.name, price: item.price, type: 'facility' })}
                       className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
                         selectedFacilityItems.some(i => i.id === item.id) 
-                          ? 'bg-ocean-deep text-white shadow-2xl' 
+                          ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-2xl' 
                           : 'glass-card hover:shadow-xl hover:scale-[1.01]'
                       }`}
                     >
@@ -992,20 +992,20 @@ function ReserveScreen({
                           <div className={`p-3 rounded-2xl ${
                             selectedFacilityItems.some(i => i.id === item.id) 
                               ? 'bg-white/20' 
-                              : 'bg-ocean-deep/10'
+                              : 'bg-ocean-deep dark:bg-ocean-primary/10'
                           }`}>
-                            {item.id === 'f1' && <Trees size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep'} />}
+                            {item.id === 'f1' && <Trees size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'} />}
                             {item.id === 'f2' && <User size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-primary'} />}
                           </div>
                           <div>
                             <h4 className={`font-display font-bold text-lg ${
-                              selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep'
+                              selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'
                             }`}>
                               {item.name}
                             </h4>
                             <div className="flex items-center gap-2">
                               <p className={`text-sm ${
-                                selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/70' : 'text-gray-500'
+                                selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/70' : 'text-gray-500 dark:text-gray-300'
                               }`}>
                                 {item.category}
                               </p>
@@ -1054,10 +1054,10 @@ function ReserveScreen({
                       <CheckCircle2 size={20} className="text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-ocean-deep">
+                      <h4 className="font-bold text-ocean-deep dark:text-gray-200">
                         {selectedFacilityItems.length} facilit{selectedFacilityItems.length === 1 ? 'y' : 'ies'} selected
                       </h4>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         Total: ₱{selectedFacilityItems.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
                       </p>
                     </div>
@@ -1065,12 +1065,12 @@ function ReserveScreen({
                   <div className="space-y-2 pb-4">
                     {selectedFacilityItems.map(item => (
                       <div key={item.id} className="flex items-center justify-between text-sm">
-                        <span className="font-bold text-ocean-deep">{item.name}</span>
+                        <span className="font-bold text-ocean-deep dark:text-gray-200">{item.name}</span>
                         <span className="font-bold text-sunset-vibrant">₱{item.price.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="text-center text-xs font-bold text-gray-600">Selected facilities are saved in your cart.</div>
+                  <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-300">Selected facilities are saved in your cart.</div>
                 </motion.div>
               )}
             </motion.div>
@@ -1237,13 +1237,13 @@ function AuthScreen({
       exit={{ opacity: 0, scale: 0.95 }}
       className="p-8 space-y-10"
     >
-      <button onClick={onBack} className="p-2 hover:bg-sand-muted rounded-xl transition-colors">
-        <Home size={20} className="text-ocean-deep" />
+      <button onClick={onBack} className="p-2 hover:bg-sand-muted dark:bg-[#1E293B] rounded-xl transition-colors">
+        <Home size={20} className="text-ocean-deep dark:text-gray-200" />
       </button>
 
       <div className="space-y-8">
         {notice && (
-          <div className="glass-card p-4 rounded-2xl text-sm text-ocean-deep">
+          <div className="glass-card p-4 rounded-2xl text-sm text-ocean-deep dark:text-gray-200">
             {notice}
           </div>
         )}
@@ -1251,8 +1251,8 @@ function AuthScreen({
         {step === 'auth' ? (
           <>
             <div className="space-y-2">
-              <h2 className="text-4xl font-display font-bold text-ocean-deep">{isLogin ? 'Welcome Back' : 'Join Us'}</h2>
-              <p className="text-gray-500 text-sm">{isLogin ? 'Sign in to your Parola Park account' : 'Create an account to start exploring'}</p>
+              <h2 className="text-4xl font-display font-bold text-ocean-deep dark:text-gray-200">{isLogin ? 'Welcome Back' : 'Join Us'}</h2>
+              <p className="text-gray-500 dark:text-gray-300 text-sm">{isLogin ? 'Sign in to your Parola Park account' : 'Create an account to start exploring'}</p>
             </div>
 
             <div className="space-y-4">
@@ -1278,13 +1278,13 @@ function AuthScreen({
             <div className="text-center">
               {isLogin ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">New here? <button onClick={() => setIsLogin(false)} className="text-ocean-primary font-bold hover:underline">Create Account</button></p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">New here? <button onClick={() => setIsLogin(false)} className="text-ocean-primary font-bold hover:underline">Create Account</button></p>
                   <button onClick={handleForgotPassword} className="text-xs font-bold text-ocean-primary hover:underline" disabled={loading}>
                     Forgot Password?
                   </button>
                 </div>
               ) : (
-                <p className="text-sm text-gray-600">Already have an account? <button onClick={() => setIsLogin(true)} className="text-ocean-primary font-bold hover:underline">Log In</button></p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Already have an account? <button onClick={() => setIsLogin(true)} className="text-ocean-primary font-bold hover:underline">Log In</button></p>
               )}
             </div>
 
@@ -1299,8 +1299,8 @@ function AuthScreen({
         ) : (
           <>
             <div className="space-y-2">
-              <h2 className="text-3xl font-display font-bold text-ocean-deep">Complete Your Profile</h2>
-              <p className="text-gray-500 text-sm">Fill in the details below to continue browsing the app.</p>
+              <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Complete Your Profile</h2>
+              <p className="text-gray-500 dark:text-gray-300 text-sm">Fill in the details below to continue browsing the app.</p>
             </div>
 
             <div className="space-y-4">
@@ -1346,12 +1346,53 @@ function AuthScreen({
 function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null, onLogin: () => void, onLogout: () => void }) {
   const [history, setHistory] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'settings'>('profile');
-  const [settings, setSettings] = useState({
-    notifications: true,
-    darkMode: false
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('parola_settings');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      notifications: false,
+      darkMode: document.documentElement.classList.contains('dark')
+    };
   });
+
+  useEffect(() => {
+    if (settings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('parola_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  const toggleNotifications = async () => {
+    if (!settings.notifications) {
+      if ('Notification' in window) {
+        const p = await window.Notification.requestPermission();
+        if (p === 'granted') {
+          setSettings(s => ({ ...s, notifications: true }));
+          new window.Notification('Parola Park', { body: 'Notifications enabled!' });
+        } else {
+          alert('Notification permission denied.');
+          setSettings(s => ({ ...s, notifications: false }));
+        }
+      } else {
+        alert('Notifications not supported.');
+      }
+    } else {
+      setSettings(s => ({ ...s, notifications: false }));
+    }
+  };
+
   const [modal, setModal] = useState<'payment' | 'notifications' | 'help' | null>(null);
   const [receiptBooking, setReceiptBooking] = useState<any | null>(null);
+
+  const [paymentMethods, setPaymentMethods] = useState<{ id: string, name: string, type: string, details: string, isDefault: boolean }[]>([
+    { id: '1', name: 'GCash', type: 'ewallet', details: 'Linked • 0917****123', isDefault: true }
+  ]);
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [newPaymentForm, setNewPaymentForm] = useState({ name: '', details: '' });
 
   useEffect(() => {
     if (user) {
@@ -1381,14 +1422,14 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
         animate={{ opacity: 1, y: 0 }}
         className="p-8 space-y-10"
       >
-        <h2 className="text-3xl font-display font-bold text-ocean-deep">Profile</h2>
+        <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Profile</h2>
         <div className="text-center py-20 space-y-8 glass-card rounded-3xl p-10">
-          <div className="w-20 h-20 bg-sand-muted rounded-full flex items-center justify-center mx-auto text-gray-400">
+          <div className="w-20 h-20 bg-sand-muted dark:bg-[#1E293B] rounded-full flex items-center justify-center mx-auto text-gray-400 dark:text-gray-400">
             <User size={40} />
           </div>
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-ocean-deep">Guest Mode</h3>
-            <p className="text-gray-500 text-sm">Sign in to unlock personalized experiences and manage your bookings.</p>
+            <h3 className="text-xl font-bold text-ocean-deep dark:text-gray-200">Guest Mode</h3>
+            <p className="text-gray-500 dark:text-gray-300 text-sm">Sign in to unlock personalized experiences and manage your bookings.</p>
           </div>
           <button onClick={onLogin} className="btn-luxury w-full">Sign In</button>
         </div>
@@ -1400,7 +1441,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col h-full bg-sand-light relative"
+      className="flex flex-col h-full bg-sand-light dark:bg-[#0B1120] relative"
     >
       <AnimatePresence>
         {(modal || receiptBooking) && (
@@ -1408,7 +1449,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[100] bg-ocean-deep/90 backdrop-blur-md p-4 sm:p-8 flex flex-col"
+              className="absolute inset-0 z-[100] bg-ocean-deep dark:bg-[#0B1120]/95 backdrop-blur-md p-4 sm:p-8 flex flex-col"
           >
             <div className="flex items-center justify-between mb-10">
               <h3 className="text-2xl font-display font-bold text-white capitalize">{receiptBooking ? 'receipt' : modal}</h3>
@@ -1417,7 +1458,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                   setModal(null);
                   setReceiptBooking(null);
                 }}
-                className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-colors"
+                className="p-2 bg-white/10 dark:bg-white/5 rounded-xl text-white hover:bg-white/20 transition-colors"
               >
                 <ArrowRight size={24} className="rotate-180" />
               </button>
@@ -1431,19 +1472,71 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
               )}
               {modal === 'payment' && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold">G</div>
-                      <div>
-                        <p className="font-bold text-white">GCash</p>
-                        <p className="text-xs text-gray-400">Linked • 0917****123</p>
+                  {paymentMethods.map(pm => (
+                    <div 
+                      key={pm.id} 
+                      onClick={() => setPaymentMethods(pms => pms.map(p => ({ ...p, isDefault: p.id === pm.id })))} 
+                      className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 ${pm.type === 'ewallet' ? 'bg-blue-600' : 'bg-gray-600'} rounded-lg flex items-center justify-center font-bold`}>{pm.name.charAt(0).toUpperCase()}</div>
+                        <div>
+                          <p className="font-bold text-white">{pm.name}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-400">{pm.details}</p>
+                        </div>
+                      </div>
+                      {pm.isDefault && <CheckCircle2 size={20} className="text-sunset-vibrant" />}
+                    </div>
+                  ))}
+                  
+                  {isAddingPayment ? (
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                      <input 
+                        className="w-full bg-transparent border-b border-white/20 text-white p-2 text-sm focus:outline-none focus:border-sunset-vibrant placeholder:text-gray-500" 
+                        placeholder="Method Name (e.g. Maya, Credit Card)"
+                        value={newPaymentForm.name}
+                        onChange={e => setNewPaymentForm({ ...newPaymentForm, name: e.target.value })}
+                      />
+                      <input 
+                        className="w-full bg-transparent border-b border-white/20 text-white p-2 text-sm focus:outline-none focus:border-sunset-vibrant placeholder:text-gray-500" 
+                        placeholder="Details (e.g. 0912****)"
+                        value={newPaymentForm.details}
+                        onChange={e => setNewPaymentForm({ ...newPaymentForm, details: e.target.value })}
+                      />
+                      <div className="flex gap-2 pt-2">
+                        <button 
+                          className="flex-1 py-2 bg-sunset-vibrant text-ocean-deep font-bold rounded-xl text-sm hover:opacity-90"
+                          onClick={() => {
+                            if (newPaymentForm.name && newPaymentForm.details) {
+                              setPaymentMethods([...paymentMethods, {
+                                id: Date.now().toString(),
+                                name: newPaymentForm.name,
+                                type: newPaymentForm.name.toLowerCase().includes('card') ? 'card' : 'ewallet',
+                                details: newPaymentForm.details,
+                                isDefault: false
+                              }]);
+                              setIsAddingPayment(false);
+                              setNewPaymentForm({ name: '', details: '' });
+                            }
+                          }}
+                        >Save</button>
+                        <button 
+                          className="flex-1 py-2 border border-white/20 text-white tracking-wide font-bold rounded-xl text-sm hover:bg-white/10"
+                          onClick={() => {
+                            setIsAddingPayment(false);
+                            setNewPaymentForm({ name: '', details: '' });
+                          }}
+                        >Cancel</button>
                       </div>
                     </div>
-                    <CheckCircle2 size={20} className="text-sunset-vibrant" />
-                  </div>
-                  <button className="w-full py-4 border-2 border-dashed border-white/20 rounded-2xl text-white/40 text-sm font-bold hover:border-white/40 hover:text-white/60 transition-all">
-                    + Add Payment Method
-                  </button>
+                  ) : (
+                    <button 
+                      onClick={() => setIsAddingPayment(true)}
+                      className="w-full py-4 border-2 border-dashed border-white/20 rounded-2xl text-white/40 text-sm font-bold hover:border-white/40 hover:text-white/60 transition-all"
+                    >
+                      + Add Payment Method
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -1455,7 +1548,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                   ].map((n, i) => (
                     <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-1">
                       <p className="font-bold text-white text-sm">{n.title}</p>
-                      <p className="text-xs text-gray-400">{n.desc}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-400">{n.desc}</p>
                       <p className="text-[10px] text-sunset-vibrant pt-1 uppercase tracking-widest">{n.time}</p>
                     </div>
                   ))}
@@ -1472,10 +1565,10 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                       </div>
                     ))}
                   </div>
-                  <div className="p-6 bg-sunset-vibrant rounded-[32px] text-ocean-deep">
+                  <div className="p-6 bg-sunset-vibrant rounded-[32px] text-ocean-deep dark:text-gray-200">
                     <h4 className="font-display font-bold text-xl mb-2">Need direct help?</h4>
                     <p className="text-sm opacity-80 mb-6">Our support team is available 24/7 for urgent concerns.</p>
-                    <button className="w-full py-4 bg-ocean-deep text-white rounded-2xl font-bold text-sm shadow-xl">Contact Support</button>
+                    <button className="w-full py-4 bg-ocean-deep dark:bg-ocean-primary text-white rounded-2xl font-bold text-sm shadow-xl">Contact Support</button>
                   </div>
                 </div>
               )}
@@ -1486,16 +1579,16 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
 
       {/* Profile Header */}
       <div className="p-8 pb-4">
-        <h2 className="text-3xl font-display font-bold text-ocean-deep mb-6">Profile</h2>
+        <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200 mb-6">Profile</h2>
         
         <div className="p-6 glass-card rounded-[32px] relative overflow-hidden flex items-center gap-6">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-ocean-primary to-sunset-vibrant" />
-          <div className="w-20 h-20 rounded-2xl bg-ocean-deep text-white flex items-center justify-center text-3xl font-display font-bold shadow-xl shrink-0">
+          <div className="w-20 h-20 rounded-2xl bg-ocean-deep dark:bg-ocean-primary text-white flex items-center justify-center text-3xl font-display font-bold shadow-xl shrink-0">
             {user.email?.[0].toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-display font-bold text-ocean-deep truncate">{user.email?.split('@')[0]}</h3>
-            <p className="text-gray-500 text-xs truncate mb-2">{user.email}</p>
+            <h3 className="text-xl font-display font-bold text-ocean-deep dark:text-gray-200 truncate">{user.email?.split('@')[0]}</h3>
+            <p className="text-gray-500 dark:text-gray-300 text-xs truncate mb-2">{user.email}</p>
             <div className="flex gap-2">
               <span className="px-2 py-0.5 bg-ocean-primary/10 text-ocean-primary text-[10px] font-bold rounded-full uppercase tracking-wider">Explorer</span>
               <span className="px-2 py-0.5 bg-sunset-vibrant/10 text-sunset-vibrant text-[10px] font-bold rounded-full uppercase tracking-wider">Lvl 1</span>
@@ -1512,8 +1605,8 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
             onClick={() => setActiveTab(tab as any)}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               activeTab === tab 
-                ? 'bg-ocean-deep text-white shadow-lg' 
-                : 'text-gray-400 hover:text-ocean-deep'
+                ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg' 
+                : 'text-gray-400 dark:text-gray-400 hover:text-ocean-deep dark:text-gray-200'
             }`}
           >
             {tab}
@@ -1534,17 +1627,17 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
             >
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-5 glass-card rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Total Visits</p>
-                  <p className="text-xl font-bold text-ocean-deep">{history.length}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Total Visits</p>
+                  <p className="text-xl font-bold text-ocean-deep dark:text-gray-200">{history.length}</p>
                 </div>
                 <div className="p-5 glass-card rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Reward Points</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Reward Points</p>
                   <p className="text-xl font-bold text-sunset-vibrant">{history.length * 100}</p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">Account Options</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400 px-2">Account Options</h4>
                 <ProfileOption 
                   icon={<CreditCard size={18} />} 
                   label="Payment Methods" 
@@ -1584,12 +1677,12 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-xs font-bold text-ocean-deep">Booking Confirmed</p>
-                      <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <p className="text-xs font-bold text-ocean-deep dark:text-gray-200">Booking Confirmed</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-400 flex items-center gap-1">
                         <Clock size={10} /> {new Date(booking.timestamp).toLocaleDateString()}
                       </p>
                       {booking.receiptNo && (
-                        <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">{booking.receiptNo}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-400 font-bold tracking-widest uppercase">{booking.receiptNo}</p>
                       )}
                     </div>
                     <span className="text-sm font-bold text-ocean-primary">₱{booking.total}</span>
@@ -1599,7 +1692,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                       <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
                     )}
                     {booking.payment?.provider && (
-                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                      <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
                     )}
                     {booking.email?.sent === true && (
                       <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
@@ -1607,13 +1700,13 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {booking.items?.map((item: any, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">{item.name}</span>
+                      <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">{item.name}</span>
                     ))}
                   </div>
                 </button>
               )) : (
                 <div className="text-center py-20 opacity-50">
-                  <Clock size={40} className="mx-auto mb-4 text-gray-400" />
+                  <Clock size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
                   <p className="text-sm">No past bookings yet</p>
                 </div>
               )}
@@ -1629,34 +1722,34 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
               className="space-y-6"
             >
               <div className="space-y-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">App Preferences</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400 px-2">App Preferences</h4>
                 <div className="p-4 glass-card rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Bell size={18} className="text-ocean-deep" />
-                    <span className="text-sm font-bold text-ocean-deep">Push Notifications</span>
+                    <Bell size={18} className="text-ocean-deep dark:text-gray-200" />
+                    <span className="text-sm font-bold text-ocean-deep dark:text-gray-200">Push Notifications</span>
                   </div>
                   <button 
-                    onClick={() => setSettings(s => ({ ...s, notifications: !s.notifications }))}
-                    className={`w-10 h-6 rounded-full relative transition-colors ${settings.notifications ? 'bg-sunset-vibrant' : 'bg-sand-muted'}`}
+                    onClick={toggleNotifications}
+                    className={`w-10 h-6 rounded-full relative transition-colors ${settings.notifications ? 'bg-sunset-vibrant' : 'bg-sand-muted dark:bg-[#1E293B]'}`}
                   >
                     <motion.div 
                       animate={{ x: settings.notifications ? 16 : 4 }}
-                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm" 
+                      className="absolute top-1 w-4 h-4 bg-white dark:bg-[#1E293B] rounded-full shadow-sm" 
                     />
                   </button>
                 </div>
                 <div className="p-4 glass-card rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Settings size={18} className="text-ocean-deep" />
-                    <span className="text-sm font-bold text-ocean-deep">Dark Mode</span>
+                    <Settings size={18} className="text-ocean-deep dark:text-gray-200" />
+                    <span className="text-sm font-bold text-ocean-deep dark:text-gray-200">Dark Mode</span>
                   </div>
                   <button 
                     onClick={() => setSettings(s => ({ ...s, darkMode: !s.darkMode }))}
-                    className={`w-10 h-6 rounded-full relative transition-colors ${settings.darkMode ? 'bg-sunset-vibrant' : 'bg-sand-muted'}`}
+                    className={`w-10 h-6 rounded-full relative transition-colors ${settings.darkMode ? 'bg-sunset-vibrant' : 'bg-sand-muted dark:bg-[#1E293B]'}`}
                   >
                     <motion.div 
                       animate={{ x: settings.darkMode ? 16 : 4 }}
-                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm" 
+                      className="absolute top-1 w-4 h-4 bg-white dark:bg-[#1E293B] rounded-full shadow-sm" 
                     />
                   </button>
                 </div>
@@ -1682,38 +1775,38 @@ function ReceiptCard({ booking }: { booking: any }) {
   const dateLabel = booking?.timestamp ? new Date(booking.timestamp).toLocaleString() : '—';
 
   return (
-    <div className="bg-white rounded-[32px] p-6 sm:p-8 space-y-6 shadow-2xl w-full max-w-[860px]">
+    <div className="bg-white dark:bg-[#1E293B] rounded-[32px] p-6 sm:p-8 space-y-6 shadow-2xl w-full max-w-[860px]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Receipt</p>
-          <p className="text-2xl sm:text-3xl font-display font-bold text-ocean-deep break-words">{receiptNo}</p>
-          <p className="text-xs text-gray-500 mt-1">{dateLabel}</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Receipt</p>
+          <p className="text-2xl sm:text-3xl font-display font-bold text-ocean-deep dark:text-gray-200 break-words">{receiptNo}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{dateLabel}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Total</p>
           <p className="text-3xl font-display font-bold text-sunset-vibrant">₱{total.toLocaleString()}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        <div className="p-4 rounded-2xl bg-sand-light border border-sand-muted">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Booked By</p>
+        <div className="p-4 rounded-2xl bg-sand-light dark:bg-[#0B1120] border border-sand-muted dark:border-white/10">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-2">Booked By</p>
           <div className="space-y-1">
-            <p className="text-sm font-bold text-ocean-deep">{customerName}</p>
-            <p className="text-xs text-gray-600 break-words">Email: {customerEmail}</p>
-            <p className="text-xs text-gray-600">Phone: {customerPhone}</p>
-            <p className="text-xs text-gray-600 break-words">Address: {customerAddress}</p>
+            <p className="text-sm font-bold text-ocean-deep dark:text-gray-200">{customerName}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 break-words">Email: {customerEmail}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">Phone: {customerPhone}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 break-words">Address: {customerAddress}</p>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-sand-light border border-sand-muted">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Payment</p>
+        <div className="p-4 rounded-2xl bg-sand-light dark:bg-[#0B1120] border border-sand-muted dark:border-white/10">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-2">Payment</p>
           <div className="flex items-center justify-between text-sm">
-            <span className="font-bold text-ocean-deep uppercase tracking-wider">{paymentMethod}</span>
-            <span className="font-bold text-gray-600 uppercase tracking-wider">{paymentProvider}</span>
+            <span className="font-bold text-ocean-deep dark:text-gray-200 uppercase tracking-wider">{paymentMethod}</span>
+            <span className="font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{paymentProvider}</span>
           </div>
           {booking?.status && (
-            <p className="text-xs text-gray-600 mt-2">Status: {booking.status}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">Status: {booking.status}</p>
           )}
           {booking?.email?.sent === true && (
             <p className="text-xs text-emerald-600 font-bold mt-2">Confirmation email sent</p>
@@ -1725,19 +1818,19 @@ function ReceiptCard({ booking }: { booking: any }) {
       </div>
 
       <div className="space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Items</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Items</p>
         <div className="space-y-2">
           {items.map((item, idx) => (
             <div key={`${item.name}-${idx}`} className="flex items-center justify-between text-sm">
               <div className="min-w-0">
-                <p className="font-bold text-ocean-deep truncate">{item.name}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{item.type || 'item'}</p>
+                <p className="font-bold text-ocean-deep dark:text-gray-200 truncate">{item.name}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">{item.type || 'item'}</p>
               </div>
               <p className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : Number(item.price || 0).toLocaleString()}</p>
             </div>
           ))}
           {items.length === 0 && (
-            <p className="text-sm text-gray-500">No items found.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-300">No items found.</p>
           )}
         </div>
       </div>
@@ -1749,7 +1842,7 @@ function ProfileOption({ icon, label, onClick }: { icon: React.ReactNode, label:
   return (
     <button 
       onClick={onClick}
-      className="w-full p-4 glass-card rounded-2xl flex items-center justify-between group hover:bg-ocean-deep hover:text-white transition-all"
+      className="w-full p-4 glass-card rounded-2xl flex items-center justify-between group hover:bg-ocean-deep dark:bg-ocean-primary hover:text-white transition-all"
     >
       <div className="flex items-center gap-4">
         <div className="text-sunset-vibrant group-hover:text-white transition-colors">{icon}</div>
@@ -1759,6 +1852,18 @@ function ProfileOption({ icon, label, onClick }: { icon: React.ReactNode, label:
     </button>
   );
 }
+
+const notifyUserActivity = (title: string, body: string) => {
+  try {
+    const saved = localStorage.getItem('parola_settings');
+    const settings = saved ? JSON.parse(saved) : null;
+    if (settings && settings.notifications === false) return;
+  } catch (e) {}
+
+  if ('Notification' in window && window.Notification.permission === 'granted') {
+    new window.Notification(title, { body });
+  }
+};
 
 function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: number, cart: CartItem[], user: FirebaseUser | null, onBack: () => void, onSuccess: () => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1948,6 +2053,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         const saved = await saveBooking();
         if (saved) {
           await sendConfirmationEmail(saved);
+          notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. Receipt: ${saved.receiptNo}`);
         }
         onSuccess();
       }, 2000);
@@ -1968,6 +2074,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       const saved = await saveBooking();
       if (saved) {
         await sendConfirmationEmail(saved);
+        notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. Receipt: ${saved.receiptNo}`);
       }
       onSuccess();
     }, 2000);
@@ -1978,7 +2085,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="h-full flex flex-col items-center justify-center p-8 bg-black text-white"
+        className="h-full flex flex-col items-center justify-center p-8 bg-black dark:bg-[#0B1120] text-white"
       >
         <div className="relative w-full max-w-xs aspect-square border-2 border-white/30 rounded-3xl overflow-hidden bg-gray-900">
           <div id="reader" className="w-full h-full"></div>
@@ -2001,7 +2108,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         
         <div className="mt-10 text-center space-y-2">
           <p className="text-xl font-bold tracking-widest text-blue-400">Scanner Active</p>
-          <p className="text-sm text-gray-400 px-6">Align the Parola Park QR code within the frame to pay</p>
+          <p className="text-sm text-gray-400 dark:text-gray-400 px-6">Align the Parola Park QR code within the frame to pay</p>
         </div>
 
         <button 
@@ -2009,7 +2116,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
             stopScanner();
             setPaymentStep('form');
           }}
-          className="mt-20 py-3 px-8 bg-white/10 hover:bg-white/20 rounded-2xl text-sm font-medium transition-all"
+          className="mt-20 py-3 px-8 bg-white/10 dark:bg-white/5 hover:bg-white/20 rounded-2xl text-sm font-medium transition-all"
         >
           Cancel
         </button>
@@ -2027,7 +2134,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       >
         {/* E-Wallet Header */}
         <div className="p-8 flex items-center justify-between text-white">
-          <button onClick={() => setPaymentStep('form')} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+          <button onClick={() => setPaymentStep('form')} className="p-2 hover:bg-white/10 dark:bg-white/5 rounded-full transition-colors">
             <ArrowRight size={24} className="rotate-180" />
           </button>
           <span className="font-bold tracking-widest uppercase">{isGCash ? 'GCash' : 'Maya'}</span>
@@ -2035,22 +2142,22 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 min-h-0 bg-sand-light rounded-t-[40px] mt-4 p-8 flex flex-col">
+        <div className="flex-1 min-h-0 bg-sand-light dark:bg-[#0B1120] rounded-t-[40px] mt-4 p-8 flex flex-col">
           <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center">
             <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isGCash ? 'bg-blue-600' : 'bg-[#00c07f]'} text-white`}>
               {isGCash ? <span className="text-3xl font-bold">G</span> : <span className="text-3xl font-bold">M</span>}
             </div>
 
-            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Paying To</p>
-            <h3 className="text-2xl font-display font-bold text-ocean-deep mb-8">Parola Park (Presing Park)</h3>
+            <p className="text-gray-400 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Paying To</p>
+            <h3 className="text-2xl font-display font-bold text-ocean-deep dark:text-gray-200 mb-8">Parola Park (Presing Park)</h3>
 
-            <div className="w-full bg-white rounded-3xl p-6 shadow-sm border border-sand-muted space-y-4">
+            <div className="w-full bg-white dark:bg-[#1E293B] rounded-3xl p-6 shadow-sm border border-sand-muted dark:border-white/10 space-y-4">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">Total Amount</span>
-                <span className="text-2xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
+                <span className="text-gray-400 dark:text-gray-400">Total Amount</span>
+                <span className="text-2xl font-display font-bold text-ocean-deep dark:text-gray-200">₱{total.toLocaleString()}</span>
               </div>
-              <div className="border-t border-sand-muted pt-4 flex justify-between items-center text-xs">
-                <span className="text-gray-400">Transaction Fee</span>
+              <div className="border-t border-sand-muted dark:border-white/10 pt-4 flex justify-between items-center text-xs">
+                <span className="text-gray-400 dark:text-gray-400">Transaction Fee</span>
                 <span className="font-bold text-green-600">FREE</span>
               </div>
             </div>
@@ -2059,16 +2166,16 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
               <div className="flex items-center gap-4 p-4 glass-card rounded-2xl">
                 <Wallet size={20} className={isGCash ? 'text-blue-600' : 'text-green-600'} />
                 <div className="flex-1">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Payment Source</p>
-                  <p className="text-sm font-bold text-ocean-deep">{isGCash ? 'GCash Balance' : 'Maya Wallet'}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-400 uppercase font-bold tracking-widest">Payment Source</p>
+                  <p className="text-sm font-bold text-ocean-deep dark:text-gray-200">{isGCash ? 'GCash Balance' : 'Maya Wallet'}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Available</p>
-                  <p className="text-sm font-bold text-ocean-deep">₱5,240.50</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-400 uppercase font-bold tracking-widest">Available</p>
+                  <p className="text-sm font-bold text-ocean-deep dark:text-gray-200">₱5,240.50</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 justify-center text-[10px] text-gray-400 font-bold uppercase tracking-widest pt-4">
+              <div className="flex items-center gap-3 justify-center text-[10px] text-gray-400 dark:text-gray-400 font-bold uppercase tracking-widest pt-4">
                 <ShieldCheck size={14} className="text-green-500" />
                 <span>Secure Payment Powered by {isGCash ? 'GCash' : 'Maya'}</span>
               </div>
@@ -2102,61 +2209,61 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       className="p-8 space-y-10"
     >
       <div className="flex items-center gap-4">
-        <button onClick={onBack} className="p-2 hover:bg-sand-muted rounded-xl transition-colors">
-          <Home size={20} className="text-ocean-deep" />
+        <button onClick={onBack} className="p-2 hover:bg-sand-muted dark:bg-[#1E293B] rounded-xl transition-colors">
+          <Home size={20} className="text-ocean-deep dark:text-gray-200" />
         </button>
-        <h2 className="text-3xl font-display font-bold text-ocean-deep">Checkout</h2>
+        <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Checkout</h2>
       </div>
 
       <div className="space-y-10">
         <section className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Booking Summary</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Booking Summary</h3>
 
           <div className="glass-card rounded-3xl p-6 space-y-4">
             <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Account</p>
-              <p className="text-sm font-bold text-ocean-deep">{user?.email || '—'}</p>
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 font-bold">Account</p>
+              <p className="text-sm font-bold text-ocean-deep dark:text-gray-200">{user?.email || '—'}</p>
               {profile?.fullName && (
-                <p className="text-xs text-gray-500">{profile.fullName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">{profile.fullName}</p>
               )}
             </div>
 
-            <div className="border-t border-sand-muted pt-4 space-y-2">
+            <div className="border-t border-sand-muted dark:border-white/10 pt-4 space-y-2">
               {cart.map((item, idx) => (
                 <div key={`${item.id}-${idx}`} className="flex items-center justify-between text-sm">
                   <div className="min-w-0">
-                    <p className="font-bold text-ocean-deep truncate">{item.name}</p>
-                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{item.type}</p>
+                    <p className="font-bold text-ocean-deep dark:text-gray-200 truncate">{item.name}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 font-bold">{item.type}</p>
                   </div>
                   <p className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}</p>
                 </div>
               ))}
 
               {cart.length === 0 && (
-                <p className="text-sm text-gray-500">Your cart is empty.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-300">Your cart is empty.</p>
               )}
             </div>
 
-            <div className="border-t border-sand-muted pt-4 flex items-center justify-between">
-              <span className="text-gray-500 text-sm">Total</span>
-              <span className="text-xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
+            <div className="border-t border-sand-muted dark:border-white/10 pt-4 flex items-center justify-between">
+              <span className="text-gray-500 dark:text-gray-300 text-sm">Total</span>
+              <span className="text-xl font-display font-bold text-ocean-deep dark:text-gray-200">₱{total.toLocaleString()}</span>
             </div>
           </div>
         </section>
 
         <section className="space-y-6">
           <div className="flex flex-col gap-4">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Payment Method</h3>
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Payment Method</h3>
             <div className="flex gap-4">
               <button 
                 onClick={() => setPaymentMethod('card')}
-                className={`flex-1 py-3 rounded-xl border-2 transition-all ${paymentMethod === 'card' ? 'border-ocean-deep bg-ocean-deep text-white' : 'border-sand-muted text-gray-500'}`}
+                className={`flex-1 py-3 rounded-xl border-2 transition-all ${paymentMethod === 'card' ? 'border-ocean-deep bg-ocean-deep dark:bg-ocean-primary text-white' : 'border-sand-muted dark:border-white/10 text-gray-500 dark:text-gray-300'}`}
               >
                 Card
               </button>
               <button 
                 onClick={() => setPaymentMethod('ewallet')}
-                className={`flex-1 py-3 rounded-xl border-2 transition-all ${paymentMethod === 'ewallet' ? 'border-ocean-deep bg-ocean-deep text-white' : 'border-sand-muted text-gray-500'}`}
+                className={`flex-1 py-3 rounded-xl border-2 transition-all ${paymentMethod === 'ewallet' ? 'border-ocean-deep bg-ocean-deep dark:bg-ocean-primary text-white' : 'border-sand-muted dark:border-white/10 text-gray-500 dark:text-gray-300'}`}
               >
                 E-Wallet
               </button>
@@ -2166,7 +2273,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           {paymentMethod === 'card' ? (
             <div className="space-y-4 pt-4 animate-in fade-in duration-300">
               <div className="flex justify-between items-end mb-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">Card Details</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-400">Card Details</h3>
                 <div className="flex gap-2">
                   <div className="w-8 h-5 bg-gray-200 rounded-sm" />
                   <div className="w-8 h-5 bg-gray-200 rounded-sm" />
@@ -2180,25 +2287,25 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
             </div>
           ) : (
             <div className="space-y-4 pt-4 animate-in fade-in duration-300">
-              <h3 className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">Select E-Wallet</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-400">Select E-Wallet</h3>
               <div className="grid grid-cols-1 gap-3">
                 <button 
                   onClick={() => setSelectedEWallet('gcash')}
-                  className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${selectedEWallet === 'gcash' ? 'border-blue-500 bg-blue-50' : 'border-sand-muted'}`}
+                  className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${selectedEWallet === 'gcash' ? 'border-blue-500 bg-blue-50' : 'border-sand-muted dark:border-white/10'}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">G</div>
-                    <span className="font-bold text-ocean-deep">GCash</span>
+                    <span className="font-bold text-ocean-deep dark:text-gray-200">GCash</span>
                   </div>
                   {selectedEWallet === 'gcash' && <CheckCircle2 size={20} className="text-blue-600" />}
                 </button>
                 <button 
                   onClick={() => setSelectedEWallet('maya')}
-                  className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${selectedEWallet === 'maya' ? 'border-green-500 bg-green-50' : 'border-sand-muted'}`}
+                  className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${selectedEWallet === 'maya' ? 'border-green-500 bg-green-50' : 'border-sand-muted dark:border-white/10'}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xs">M</div>
-                    <span className="font-bold text-ocean-deep">Maya</span>
+                    <span className="font-bold text-ocean-deep dark:text-gray-200">Maya</span>
                   </div>
                   {selectedEWallet === 'maya' && <CheckCircle2 size={20} className="text-green-600" />}
                 </button>
@@ -2206,16 +2313,16 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
               
               {selectedEWallet && (
                 <div className="space-y-6 pt-4 animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex p-1 bg-sand-muted/50 rounded-xl">
+                  <div className="flex p-1 bg-sand-muted dark:bg-[#1E293B]/50 rounded-xl">
                     <button 
                       onClick={() => setEwalletMode('number')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${ewalletMode === 'number' ? 'bg-white shadow-sm text-ocean-deep' : 'text-gray-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${ewalletMode === 'number' ? 'bg-white dark:bg-[#1E293B] shadow-sm text-ocean-deep dark:text-gray-200' : 'text-gray-400 dark:text-gray-400'}`}
                     >
                       Number
                     </button>
                     <button 
                       onClick={() => setEwalletMode('scan')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${ewalletMode === 'scan' ? 'bg-white shadow-sm text-ocean-deep' : 'text-gray-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${ewalletMode === 'scan' ? 'bg-white dark:bg-[#1E293B] shadow-sm text-ocean-deep dark:text-gray-200' : 'text-gray-400 dark:text-gray-400'}`}
                     >
                       Scan QR
                     </button>
@@ -2224,11 +2331,11 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
                   {ewalletMode === 'number' ? (
                     <input type="text" placeholder="Mobile Number (09xx...)" className="input-modern" />
                   ) : (
-                    <div className="flex flex-col items-center gap-4 py-4 bg-white rounded-3xl border border-sand-muted shadow-sm">
-                      <div className="p-4 bg-sand-light rounded-2xl border-2 border-dashed border-sand-muted">
+                    <div className="flex flex-col items-center gap-4 py-4 bg-white dark:bg-[#1E293B] rounded-3xl border border-sand-muted dark:border-white/10 shadow-sm">
+                      <div className="p-4 bg-sand-light dark:bg-[#0B1120] rounded-2xl border-2 border-dashed border-sand-muted dark:border-white/10">
                         <QrCode size={120} className={selectedEWallet === 'gcash' ? 'text-blue-600' : 'text-green-600'} />
                       </div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest text-center px-6">
+                      <p className="text-[10px] text-gray-400 dark:text-gray-400 uppercase tracking-widest text-center px-6">
                         Scan this QR code with your {selectedEWallet === 'gcash' ? 'GCash' : 'Maya'} app to pay ₱{total}
                       </p>
                     </div>
@@ -2239,13 +2346,13 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           )}
         </section>
 
-        <div className="pt-6 border-t border-sand-muted space-y-6">
+        <div className="pt-6 border-t border-sand-muted dark:border-white/10 space-y-6">
           <div className="flex justify-between items-center">
-            <span className="text-gray-500">Total Amount</span>
-            <span className="text-3xl font-display font-bold text-ocean-deep">₱{total.toLocaleString()}</span>
+            <span className="text-gray-500 dark:text-gray-300">Total Amount</span>
+            <span className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">₱{total.toLocaleString()}</span>
           </div>
           {emailStatusMessage && (
-            <div className="glass-card rounded-2xl p-4 text-xs font-bold text-ocean-deep">
+            <div className="glass-card rounded-2xl p-4 text-xs font-bold text-ocean-deep dark:text-gray-200">
               {emailStatusMessage}
             </div>
           )}
@@ -2280,15 +2387,15 @@ function SuccessScreen({ onHome }: { onHome: () => void }) {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', damping: 12 }}
-          className="relative text-emerald-500 bg-white p-8 rounded-[40px] shadow-2xl"
+          className="relative text-emerald-500 bg-white dark:bg-[#1E293B] p-8 rounded-[40px] shadow-2xl"
         >
           <CheckCircle2 size={100} strokeWidth={1.5} />
         </motion.div>
       </div>
       
       <div className="space-y-3">
-        <h2 className="text-4xl font-display font-bold text-ocean-deep">Success!</h2>
-        <p className="text-gray-500 leading-relaxed">
+        <h2 className="text-4xl font-display font-bold text-ocean-deep dark:text-gray-200">Success!</h2>
+        <p className="text-gray-500 dark:text-gray-300 leading-relaxed">
           Your booking has been confirmed. A digital pass has been sent to your email. See you at Parola Park!
         </p>
       </div>
@@ -2544,15 +2651,15 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col h-full bg-sand-light"
+      className="flex flex-col h-full bg-sand-light dark:bg-[#0B1120]"
     >
       {/* Admin Header */}
       <div className="p-8 pb-4">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={onBack} className="p-2 hover:bg-sand-muted rounded-xl transition-colors">
-            <Home size={20} className="text-ocean-deep" />
+          <button onClick={onBack} className="p-2 hover:bg-sand-muted dark:bg-[#1E293B] rounded-xl transition-colors">
+            <Home size={20} className="text-ocean-deep dark:text-gray-200" />
           </button>
-          <h2 className="text-3xl font-display font-bold text-ocean-deep">Admin Dashboard</h2>
+          <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Admin Dashboard</h2>
         </div>
         
         <div className="p-6 glass-card rounded-[32px] relative overflow-hidden">
@@ -2562,8 +2669,8 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               A
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-display font-bold text-ocean-deep">Administrator</h3>
-              <p className="text-gray-500 text-xs mb-2">{ADMIN_EMAIL}</p>
+              <h3 className="text-xl font-display font-bold text-ocean-deep dark:text-gray-200">Administrator</h3>
+              <p className="text-gray-500 dark:text-gray-300 text-xs mb-2">{ADMIN_EMAIL}</p>
               <span className="px-2 py-0.5 bg-sunset-vibrant/10 text-sunset-vibrant text-[10px] font-bold rounded-full uppercase tracking-wider">Admin Access</span>
             </div>
           </div>
@@ -2583,8 +2690,8 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
             onClick={() => setActiveTab(tab.key as any)}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === tab.key 
-                ? 'bg-ocean-deep text-white shadow-lg' 
-                : 'text-gray-400 hover:text-ocean-deep'
+                ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg' 
+                : 'text-gray-400 dark:text-gray-400 hover:text-ocean-deep dark:text-gray-200'
             }`}
           >
             {tab.icon}
@@ -2601,13 +2708,13 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[200] bg-ocean-deep/90 backdrop-blur-md p-4 sm:p-8 flex flex-col"
+              className="absolute inset-0 z-[200] bg-ocean-deep dark:bg-ocean-primary/90 backdrop-blur-md p-4 sm:p-8 flex flex-col"
             >
               <div className="flex items-center justify-between mb-10">
                 <h3 className="text-2xl font-display font-bold text-white capitalize">receipt</h3>
                 <button
                   onClick={() => setReceiptBooking(null)}
-                  className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-colors"
+                  className="p-2 bg-white/10 dark:bg-white/5 rounded-xl text-white hover:bg-white/20 transition-colors"
                 >
                   <ArrowRight size={24} className="rotate-180" />
                 </button>
@@ -2630,33 +2737,33 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               {/* Stats Cards */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-5 glass-card rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Total Revenue</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Total Revenue</p>
                   <p className="text-xl font-bold text-sunset-vibrant">₱{totalRevenue.toLocaleString()}</p>
                 </div>
                 <div className="p-5 glass-card rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Total Bookings</p>
-                  <p className="text-xl font-bold text-ocean-deep">{totalBookings}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Total Bookings</p>
+                  <p className="text-xl font-bold text-ocean-deep dark:text-gray-200">{totalBookings}</p>
                 </div>
                 <div className="p-5 glass-card rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Unique Users</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Unique Users</p>
                   <p className="text-xl font-bold text-ocean-primary">{uniqueUsers}</p>
                 </div>
                 <div className="p-5 glass-card rounded-2xl text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Avg. Booking</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Avg. Booking</p>
                   <p className="text-xl font-bold text-sunset-soft">₱{totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 0}</p>
                 </div>
               </div>
 
               {/* Recent Bookings */}
               <div className="space-y-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">Recent Bookings</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400 px-2">Recent Bookings</h4>
                 {bookings.slice(0, 5).map((booking) => (
                   <button key={booking.id} onClick={() => setReceiptBooking(booking)} className="w-full text-left p-4 glass-card rounded-2xl space-y-3 hover:shadow-xl transition-all">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-xs font-bold text-ocean-deep">{booking.receiptNo || booking.id}</p>
-                        <p className="text-[10px] text-gray-500 font-bold">{booking.userEmail || 'Guest'}</p>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-xs font-bold text-ocean-deep dark:text-gray-200">{booking.receiptNo || booking.id}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-300 font-bold">{booking.userEmail || 'Guest'}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-400">
                           {formatDateTime(booking.timestamp)}
                         </p>
                       </div>
@@ -2667,7 +2774,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                         <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
                       )}
                       {booking.payment?.provider && (
-                        <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                        <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
                       )}
                       {booking.email?.sent === true && (
                         <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
@@ -2678,17 +2785,17 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {booking.items?.slice(0, 6).map((item: any, idx: number) => (
-                        <span key={idx} className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">{item.name}</span>
+                        <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">{item.name}</span>
                       ))}
                       {booking.items?.length > 6 && (
-                        <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">+{booking.items.length - 6} more</span>
+                        <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">+{booking.items.length - 6} more</span>
                       )}
                     </div>
                   </button>
                 ))}
                 {bookings.length === 0 && (
                   <div className="text-center py-20 opacity-50">
-                    <Calendar size={40} className="mx-auto mb-4 text-gray-400" />
+                    <Calendar size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
                     <p className="text-sm">No bookings yet</p>
                   </div>
                 )}
@@ -2705,8 +2812,8 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               className="space-y-4"
             >
               <div className="flex items-center justify-between px-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">User Management</h4>
-                <button onClick={exportUsersCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 text-ocean-deep transition-all flex items-center gap-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">User Management</h4>
+                <button onClick={exportUsersCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 dark:bg-[#0B1120]/90 text-ocean-deep dark:text-gray-200 transition-all flex items-center gap-2">
                   <Download size={16} />
                   Export CSV
                 </button>
@@ -2723,14 +2830,14 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                 <div key={u.uid} className="p-4 glass-card rounded-2xl space-y-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-ocean-deep truncate">{u.fullName || u.email || u.uid}</p>
-                      <p className="text-[10px] text-gray-500 font-bold truncate">{u.email || '—'}</p>
+                      <p className="text-xs font-bold text-ocean-deep dark:text-gray-200 truncate">{u.fullName || u.email || u.uid}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-300 font-bold truncate">{u.email || '—'}</p>
                       {(u.phoneNumber || u.address) && (
-                        <p className="text-[10px] text-gray-400 truncate">{[u.phoneNumber, u.address].filter(Boolean).join(' • ')}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-400 truncate">{[u.phoneNumber, u.address].filter(Boolean).join(' • ')}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[10px] uppercase tracking-widest text-gray-400">Bookings</p>
+                      <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400">Bookings</p>
                       <p className="text-sm font-bold text-ocean-primary">{bookingCountByUserId[u.uid] || 0}</p>
                     </div>
                   </div>
@@ -2740,10 +2847,10 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                       <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Profile Complete</span>
                     )}
                     {!u.profileComplete && (
-                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">Profile Incomplete</span>
+                      <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">Profile Incomplete</span>
                     )}
                     {u.updatedAt && (
-                      <span className="px-2 py-0.5 bg-white/60 rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">Updated {formatDateTime(u.updatedAt)}</span>
+                      <span className="px-2 py-0.5 bg-white/60 rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">Updated {formatDateTime(u.updatedAt)}</span>
                     )}
                   </div>
                 </div>
@@ -2751,7 +2858,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
 
               {filteredUsers.length === 0 && (
                 <div className="text-center py-20 opacity-50">
-                  <User size={40} className="mx-auto mb-4 text-gray-400" />
+                  <User size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
                   <p className="text-sm">No users found</p>
                 </div>
               )}
@@ -2767,8 +2874,8 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               className="space-y-4"
             >
               <div className="flex items-center justify-between px-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">All Bookings</h4>
-                <button onClick={exportBookingsCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 text-ocean-deep transition-all flex items-center gap-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">All Bookings</h4>
+                <button onClick={exportBookingsCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 dark:bg-[#0B1120]/90 text-ocean-deep dark:text-gray-200 transition-all flex items-center gap-2">
                   <Download size={16} />
                   Export CSV
                 </button>
@@ -2793,8 +2900,8 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                       onClick={() => setBookingFilter(f.key as any)}
                       className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                         bookingFilter === (f.key as any)
-                          ? 'bg-ocean-deep text-white shadow-lg'
-                          : 'text-gray-400 hover:text-ocean-deep bg-white/60'
+                          ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg'
+                          : 'text-gray-400 dark:text-gray-400 hover:text-ocean-deep dark:text-gray-200 bg-white/60'
                       }`}
                     >
                       {f.label}
@@ -2807,9 +2914,9 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                 <button key={booking.id} onClick={() => setReceiptBooking(booking)} className="w-full text-left p-4 glass-card rounded-2xl space-y-3 border-l-4 border-sunset-vibrant hover:shadow-xl transition-all">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-xs font-bold text-ocean-deep">{booking.receiptNo || booking.id}</p>
-                      <p className="text-[10px] text-gray-500 font-bold">{booking.userEmail || 'Guest'}</p>
-                      <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <p className="text-xs font-bold text-ocean-deep dark:text-gray-200">{booking.receiptNo || booking.id}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-300 font-bold">{booking.userEmail || 'Guest'}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-400 flex items-center gap-1">
                         <Clock size={10} /> {formatDateTime(booking.timestamp)}
                       </p>
                     </div>
@@ -2817,13 +2924,13 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {booking.customer?.fullName && (
-                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold">{booking.customer.fullName}</span>
+                      <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold">{booking.customer.fullName}</span>
                     )}
                     {booking.payment?.method && (
                       <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
                     )}
                     {booking.payment?.provider && (
-                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                      <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
                     )}
                     {booking.status && (
                       <span className="px-2 py-0.5 bg-sunset-vibrant/10 rounded text-[10px] text-sunset-vibrant font-bold uppercase tracking-wider">{booking.status}</span>
@@ -2837,17 +2944,17 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {booking.items?.slice(0, 10).map((item: any, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">{item.name}</span>
+                      <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">{item.name}</span>
                     ))}
                     {booking.items?.length > 10 && (
-                      <span className="px-2 py-0.5 bg-sand-muted rounded text-[10px] text-gray-600">+{booking.items.length - 10} more</span>
+                      <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">+{booking.items.length - 10} more</span>
                     )}
                   </div>
                 </button>
               ))}
               {filteredBookings.length === 0 && (
                 <div className="text-center py-20 opacity-50">
-                  <Calendar size={40} className="mx-auto mb-4 text-gray-400" />
+                  <Calendar size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
                   <p className="text-sm">No bookings found</p>
                 </div>
               )}
@@ -2862,19 +2969,19 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
               exit={{ opacity: 0, x: 10 }}
               className="space-y-6"
             >
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2">Admin Settings</h4>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400 px-2">Admin Settings</h4>
               <div className="space-y-4">
                 <div className="p-4 glass-card rounded-2xl">
-                  <p className="text-sm font-bold text-ocean-deep mb-2">System Status</p>
-                  <p className="text-xs text-gray-500">All systems operational</p>
+                  <p className="text-sm font-bold text-ocean-deep dark:text-gray-200 mb-2">System Status</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-300">All systems operational</p>
                 </div>
                 <div className="p-4 glass-card rounded-2xl">
-                  <p className="text-sm font-bold text-ocean-deep mb-2">Database</p>
-                  <p className="text-xs text-gray-500">Firebase Realtime Database connected</p>
+                  <p className="text-sm font-bold text-ocean-deep dark:text-gray-200 mb-2">Database</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-300">Firebase Realtime Database connected</p>
                 </div>
                 <div className="p-4 glass-card rounded-2xl">
-                  <p className="text-sm font-bold text-ocean-deep mb-2">Authentication</p>
-                  <p className="text-xs text-gray-500">Firebase Auth active</p>
+                  <p className="text-sm font-bold text-ocean-deep dark:text-gray-200 mb-2">Authentication</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-300">Firebase Auth active</p>
                 </div>
               </div>
             </motion.div>
