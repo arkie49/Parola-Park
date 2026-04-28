@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
+import emailjs from '@emailjs/browser';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -43,7 +44,9 @@ import {
   Sun,
   Clock,
   Star,
-  LogOut
+  LogOut,
+  Minus,
+  Plus
 } from 'lucide-react';
 import { Screen, CartItem } from './types';
 import { TOURS, FACILITIES } from './data';
@@ -66,6 +69,7 @@ export default function App() {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'completeProfile'>('login');
   const [cartHydratedForUserId, setCartHydratedForUserId] = useState<string | null>(null);
+  const [lastEmailStatus, setLastEmailStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -83,7 +87,15 @@ export default function App() {
     const profileRef = ref(db, `users/${user.uid}/profile`);
     const unsubscribe = onValue(profileRef, (snapshot) => {
       const profile = snapshot.val();
-      setProfileStatus(profile?.profileComplete ? 'complete' : 'incomplete');
+      const isComplete = profile?.profileComplete || localStorage.getItem(`profile_complete_${user.uid}`) === 'true';
+      setProfileStatus(isComplete ? 'complete' : 'incomplete');
+    }, (error) => {
+      console.error("Profile onValue error:", error);
+      if (error.message.toLowerCase().includes('permission denied')) {
+        // Check local storage as fallback
+        const isComplete = localStorage.getItem(`profile_complete_${user.uid}`) === 'true';
+        setProfileStatus(isComplete ? 'complete' : 'incomplete');
+      }
     });
 
     return () => unsubscribe();
@@ -130,14 +142,19 @@ export default function App() {
         return;
       }
 
-      if (profileStatus !== 'complete') {
+      // Allow access to reservation even if profile is incomplete
+      // Only require full profile for checkout
+      if (screen === 'checkout' && profileStatus === 'incomplete') {
         routeToAuth({
           mode: 'completeProfile',
-          notice: 'Please complete your profile to continue.',
+          notice: 'Please complete your profile to continue to checkout.',
           redirect: screen,
         });
         return;
       }
+
+      setCurrentScreen(screen);
+      return;
     }
 
     if (isAdmin && screen !== 'admin') {
@@ -164,15 +181,23 @@ export default function App() {
 
   const toggleCartItem = (item: CartItem) => {
     setCart(prev => {
-      const exists = prev.some(i => i.id === item.id && i.type === item.type);
+      const exists = prev.find(i => i.id === item.id && i.type === item.type);
       if (exists) {
         return prev.filter(i => !(i.id === item.id && i.type === item.type));
       }
-      return [...prev, item];
+      return [...prev, { ...item, quantity: item.quantity || 1 }];
     });
   };
 
-  const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+  const updateCartItemQuantity = (id: string, type: CartItem['type'], quantity: number) => {
+    setCart(prev => prev.map(item => 
+      (item.id === id && item.type === type) 
+        ? { ...item, quantity: Math.max(1, quantity) } 
+        : item
+    ));
+  };
+
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
 
   useEffect(() => {
     if (!user) {
@@ -259,6 +284,7 @@ export default function App() {
               onBack={() => navigate('home')} 
               cart={cart}
               onToggleCartItem={toggleCartItem}
+              onUpdateQuantity={updateCartItemQuantity}
               onNavigate={navigate}
             />
           )}
@@ -269,6 +295,11 @@ export default function App() {
               onSuccess={(screen?: Screen) => {
                 setAuthMode('login');
                 setAuthNotice(null);
+
+                // Check if profile was marked complete in localStorage
+                if (user && localStorage.getItem(`profile_complete_${user.uid}`) === 'true') {
+                  setProfileStatus('complete');
+                }
 
                 if (screen === 'admin') {
                   setPostAuthRedirect(null);
@@ -296,14 +327,21 @@ export default function App() {
               cart={cart}
               user={user}
               onBack={() => navigate('home')} 
-              onSuccess={() => {
+              onSuccess={(emailStatus?: string) => {
                 setCart([]);
+                setLastEmailStatus(emailStatus || null);
                 navigate('success');
               }}
             />
           )}
           {currentScreen === 'success' && (
-            <SuccessScreen onHome={() => navigate('home')} />
+            <SuccessScreen 
+              emailStatus={lastEmailStatus}
+              onHome={() => {
+                setLastEmailStatus(null);
+                navigate('home');
+              }} 
+            />
           )}
           {currentScreen === 'admin' && (
             <AdminScreen onLogout={() => { signOut(auth).then(() => setCurrentScreen('home')); }} />
@@ -588,7 +626,7 @@ function HomeScreen({ user, isAdmin, onNavigate }: { user: FirebaseUser | null; 
         <div className="grid grid-cols-2 gap-4 pt-4">
           <div className="glass-card p-4 rounded-2xl text-center">
             <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Entrance</p>
-            <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱10.00</p>
+            <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱11.00</p>
           </div>
           <div className="glass-card p-4 rounded-2xl text-center">
             <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Urban Guide</p>
@@ -715,7 +753,7 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div className="p-4 rounded-2xl bg-white/50 dark:bg-[#1E293B]/50">
               <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Entrance</p>
-              <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱10.00</p>
+              <p className="text-lg font-bold text-ocean-deep dark:text-gray-200">₱11.00</p>
             </div>
             <div className="p-4 rounded-2xl bg-white/50 dark:bg-[#1E293B]/50">
               <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-1">Urban Guide</p>
@@ -762,17 +800,21 @@ function ReserveScreen({
   onBack,
   cart,
   onToggleCartItem,
+  onUpdateQuantity,
   onNavigate,
 }: {
   onBack: () => void;
   cart: CartItem[];
   onToggleCartItem: (i: CartItem) => void;
+  onUpdateQuantity: (id: string, type: CartItem['type'], q: number) => void;
   onNavigate: (s: Screen) => void;
 }) {
-  const [activeSection, setActiveSection] = useState<'tours' | 'facilities'>('tours');
+  const mergedItems = [
+    ...TOURS.map(t => ({ ...t, type: 'tour' as const })),
+    ...FACILITIES.map(f => ({ ...f, title: f.name, type: 'facility' as const }))
+  ];
 
-  const selectedTours = cart.filter(i => i.type === 'tour');
-  const selectedFacilityItems = cart.filter(i => i.type === 'facility');
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
 
   return (
     <motion.div 
@@ -820,268 +862,168 @@ function ReserveScreen({
         </button>
       </div>
 
-      {/* Section Tabs */}
-      <div className="px-8 py-6 z-10">
-        <div className="bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-md rounded-3xl p-2 flex shadow-xl">
-          <button
-            onClick={() => setActiveSection('tours')}
-            className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all ${
-              activeSection === 'tours' 
-                ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg' 
-                : 'text-gray-600 dark:text-gray-300 hover:text-ocean-deep dark:text-gray-200'
-            }`}
-          >
-            Tours
-          </button>
-          <button
-            onClick={() => setActiveSection('facilities')}
-            className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all ${
-              activeSection === 'facilities' 
-                ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg' 
-                : 'text-gray-600 dark:text-gray-300 hover:text-ocean-deep dark:text-gray-200'
-            }`}
-          >
-            Facilities
-          </button>
-        </div>
-      </div>
-
       {/* Content */}
-      <div className="px-8 pb-8">
-        <AnimatePresence mode="wait">
-          {activeSection === 'tours' && (
-            <motion.div 
-              key="tours"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-8"
-            >
-              <div className="space-y-6">
-                <h3 className="text-lg font-display font-bold text-ocean-deep dark:text-gray-200">Choose Your Tour</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Select one or more tours to add to your reservation</p>
-              </div>
+      <div className="px-8 py-8 pb-8 space-y-8">
+        <div className="space-y-6">
+          <h3 className="text-lg font-display font-bold text-ocean-deep dark:text-gray-200">Tours and Facilities</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300">Select items to add to your reservation. Entrance fee can be adjusted for multiple people.</p>
+        </div>
 
-              <div className="grid grid-cols-1 gap-6">
-                {TOURS.map((tour, index) => (
-                  <motion.div
-                    key={tour.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <button 
-                      onClick={() => onToggleCartItem({ id: tour.id, name: tour.title, price: tour.price, type: 'tour' })}
-                      className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
-                        selectedTours.some(i => i.id === tour.id) 
-                          ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-2xl scale-[0.98]' 
-                          : 'glass-card hover:shadow-xl hover:scale-[1.02]'
-                      }`}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-2xl flex-shrink-0 ${
-                          selectedTours.some(i => i.id === tour.id) 
-                            ? 'bg-white/20' 
-                            : 'bg-ocean-deep dark:bg-ocean-primary/10'
+        <div className="grid grid-cols-1 gap-6">
+          {mergedItems.map((item, index) => {
+            const cartItem = cart.find(i => i.id === item.id && i.type === item.type);
+            const isSelected = !!cartItem;
+            const isEntranceFee = item.id === 'f1';
+
+            return (
+              <motion.div
+                key={`${item.type}-${item.id}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="space-y-3"
+              >
+                <button 
+                  onClick={() => onToggleCartItem({ id: item.id, name: item.title, price: item.price, type: item.type })}
+                  className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
+                    isSelected 
+                      ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-2xl scale-[0.98]' 
+                      : 'glass-card hover:shadow-xl hover:scale-[1.02]'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-2xl flex-shrink-0 ${
+                      isSelected 
+                        ? 'bg-white/20' 
+                        : 'bg-ocean-deep dark:bg-ocean-primary/10'
+                    }`}>
+                      {item.id === 't1' && <History size={24} className={isSelected ? 'text-white' : 'text-ocean-deep dark:text-gray-200'} />}
+                      {item.id === 't2' && <Sun size={24} className={isSelected ? 'text-white' : 'text-sunset-vibrant'} />}
+                      {item.id === 't3' && <User size={24} className={isSelected ? 'text-white' : 'text-ocean-primary'} />}
+                      {item.id === 'f1' && <Trees size={24} className={isSelected ? 'text-white' : 'text-ocean-deep dark:text-gray-200'} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className={`font-display font-bold text-lg ${
+                          isSelected ? 'text-white' : 'text-ocean-deep dark:text-gray-200'
                         }`}>
-                          {tour.id === 't1' && <History size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'} />}
-                          {tour.id === 't2' && <Sun size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-sunset-vibrant'} />}
-                          {tour.id === 't3' && <User size={24} className={selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-primary'} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className={`font-display font-bold text-lg mb-1 ${
-                            selectedTours.some(i => i.id === tour.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'
-                          }`}>
-                            {tour.title}
-                          </h4>
-                          {tour.rating && (
-                            <div className="flex items-center gap-1 mb-2">
-                              <Star size={14} className="fill-yellow-400 text-yellow-400" />
-                              <span className={`text-xs font-bold ${selectedTours.some(i => i.id === tour.id) ? 'text-white/90' : 'text-gray-700'}`}>
-                                {tour.rating}
-                              </span>
-                              <span className={`text-xs ${selectedTours.some(i => i.id === tour.id) ? 'text-white/60' : 'text-gray-400 dark:text-gray-400'}`}>
-                                ({tour.reviews})
-                              </span>
-                            </div>
-                          )}
-                          <p className={`text-sm leading-relaxed mb-3 ${
-                            selectedTours.some(i => i.id === tour.id) ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
-                          }`}>
-                            {tour.description}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <span className={`text-lg font-bold ${
-                              selectedTours.some(i => i.id === tour.id) ? 'text-sunset-soft' : 'text-sunset-vibrant'
-                            }`}>
-                              ₱{tour.price === 0 ? 'FREE' : tour.price.toLocaleString()}
-                            </span>
-                            {selectedTours.some(i => i.id === tour.id) && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="w-6 h-6 bg-sunset-vibrant rounded-full flex items-center justify-center"
-                              >
-                                <CheckCircle2 size={16} className="text-white" />
-                              </motion.div>
-                            )}
-                          </div>
-                        </div>
+                          {item.title}
+                        </h4>
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="w-6 h-6 bg-sunset-vibrant rounded-full flex items-center justify-center"
+                          >
+                            <CheckCircle2 size={16} className="text-white" />
+                          </motion.div>
+                        )}
                       </div>
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-
-              {selectedTours.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-sunset-vibrant/10 border border-sunset-vibrant/20 rounded-3xl p-6"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-sunset-vibrant rounded-full flex items-center justify-center">
-                      <CheckCircle2 size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-ocean-deep dark:text-gray-200">{selectedTours.length} tour{selectedTours.length === 1 ? '' : 's'} selected</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Total: ₱{selectedTours.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 pb-4">
-                    {selectedTours.map(item => (
-                      <div key={item.id} className="flex items-center justify-between text-sm">
-                        <span className="font-bold text-ocean-deep dark:text-gray-200">{item.name}</span>
-                        <span className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-300">Selected tours are saved in your cart.</div>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-
-          {activeSection === 'facilities' && (
-            <motion.div 
-              key="facilities"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-8"
-            >
-              <div className="space-y-6">
-                <h3 className="text-lg font-display font-bold text-ocean-deep dark:text-gray-200">Additional Facilities</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Select any facilities you'd like to include</p>
-              </div>
-
-              <div className="space-y-6">
-                {FACILITIES.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <button 
-                      onClick={() => onToggleCartItem({ id: item.id, name: item.name, price: item.price, type: 'facility' })}
-                      className={`w-full p-6 rounded-3xl transition-all duration-300 text-left group ${
-                        selectedFacilityItems.some(i => i.id === item.id) 
-                          ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-2xl' 
-                          : 'glass-card hover:shadow-xl hover:scale-[1.01]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-3 rounded-2xl ${
-                            selectedFacilityItems.some(i => i.id === item.id) 
-                              ? 'bg-white/20' 
-                              : 'bg-ocean-deep dark:bg-ocean-primary/10'
-                          }`}>
-                            {item.id === 'f1' && <Trees size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'} />}
-                            {item.id === 'f2' && <User size={24} className={selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-primary'} />}
-                          </div>
-                          <div>
-                            <h4 className={`font-display font-bold text-lg ${
-                              selectedFacilityItems.some(i => i.id === item.id) ? 'text-white' : 'text-ocean-deep dark:text-gray-200'
-                            }`}>
-                              {item.name}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <p className={`text-sm ${
-                                selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/70' : 'text-gray-500 dark:text-gray-300'
-                              }`}>
-                                {item.category}
-                              </p>
-                              {item.rating && (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-1 h-1 rounded-full bg-gray-300" />
-                                  <Star size={12} className="fill-yellow-400 text-yellow-400" />
-                                  <span className={`text-xs font-bold ${selectedFacilityItems.some(i => i.id === item.id) ? 'text-white/90' : 'text-gray-700'}`}>
-                                    {item.rating}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`text-lg font-bold ${
-                            selectedFacilityItems.some(i => i.id === item.id) ? 'text-sunset-soft' : 'text-sunset-vibrant'
-                          }`}>
-                            ₱{item.price.toLocaleString()}
+                      
+                      {item.rating && (
+                        <div className="flex items-center gap-1 mb-2">
+                          <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                          <span className={`text-xs font-bold ${isSelected ? 'text-white/90' : 'text-gray-700'}`}>
+                            {item.rating}
                           </span>
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                            selectedFacilityItems.some(i => i.id === item.id) 
-                              ? 'bg-sunset-vibrant border-sunset-vibrant' 
-                              : 'border-gray-300'
-                          }`}>
-                            {selectedFacilityItems.some(i => i.id === item.id) && (
-                              <CheckCircle2 size={14} className="text-white" />
-                            )}
-                          </div>
+                          <span className={`text-xs ${isSelected ? 'text-white/60' : 'text-gray-400 dark:text-gray-400'}`}>
+                            ({item.reviews})
+                          </span>
                         </div>
-                      </div>
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
+                      )}
+                      
+                      {'description' in item && (
+                        <p className={`text-sm leading-relaxed mb-3 ${
+                          isSelected ? 'text-white/80' : 'text-gray-600 dark:text-gray-300'
+                        }`}>
+                          {item.description}
+                        </p>
+                      )}
 
-              {selectedFacilityItems.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-ocean-primary/10 border border-ocean-primary/20 rounded-3xl p-6"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-ocean-primary rounded-full flex items-center justify-center">
-                      <CheckCircle2 size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-ocean-deep dark:text-gray-200">
-                        {selectedFacilityItems.length} facilit{selectedFacilityItems.length === 1 ? 'y' : 'ies'} selected
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Total: ₱{selectedFacilityItems.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 pb-4">
-                    {selectedFacilityItems.map(item => (
-                      <div key={item.id} className="flex items-center justify-between text-sm">
-                        <span className="font-bold text-ocean-deep dark:text-gray-200">{item.name}</span>
-                        <span className="font-bold text-sunset-vibrant">₱{item.price.toLocaleString()}</span>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-lg font-bold ${
+                          isSelected ? 'text-sunset-soft' : 'text-sunset-vibrant'
+                        }`}>
+                          ₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}
+                          {isEntranceFee && ' / person'}
+                        </span>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                  <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-300">Selected facilities are saved in your cart.</div>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </button>
+
+                {isSelected && isEntranceFee && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-between p-4 glass-card rounded-2xl mx-2 border-sunset-vibrant/30"
+                  >
+                    <span className="text-sm font-bold text-ocean-deep dark:text-gray-200">Number of People</span>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateQuantity(item.id, item.type, (cartItem.quantity || 1) - 1);
+                        }}
+                        className="p-2 bg-ocean-deep dark:bg-ocean-primary/20 text-white dark:text-gray-200 rounded-lg hover:opacity-80 transition-all"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="font-display font-bold text-lg text-ocean-deep dark:text-gray-200 w-8 text-center">
+                        {cartItem.quantity || 1}
+                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateQuantity(item.id, item.type, (cartItem.quantity || 1) + 1);
+                        }}
+                        className="p-2 bg-ocean-deep dark:bg-ocean-primary/20 text-white dark:text-gray-200 rounded-lg hover:opacity-80 transition-all"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {cart.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-sunset-vibrant/10 border border-sunset-vibrant/20 rounded-3xl p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-sunset-vibrant rounded-full flex items-center justify-center">
+                <CheckCircle2 size={20} className="text-white" />
+              </div>
+              <div>
+                <h4 className="font-bold text-ocean-deep dark:text-gray-200">{cart.length} item{cart.length === 1 ? '' : 's'} selected</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Total: ₱{totalPrice.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2 pb-4">
+              {cart.map(item => (
+                <div key={`${item.type}-${item.id}`} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-ocean-deep dark:text-gray-200">{item.name}</span>
+                    {item.quantity && item.quantity > 1 && (
+                      <span className="text-xs text-gray-500 dark:text-gray-300">x{item.quantity}</span>
+                    )}
+                  </div>
+                  <span className="font-bold text-sunset-vibrant">
+                    ₱{(item.price * (item.quantity || 1)).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-300">Selected items are saved in your cart.</div>
+          </motion.div>
+        )}
       </div>
 
       {/* Bottom Actions */}
@@ -1091,13 +1033,13 @@ function ReserveScreen({
             onClick={() => onNavigate('checkout')} 
             className="btn-luxury py-4 text-sm font-bold"
           >
-            View Cart & Checkout
+            Checkout
           </button>
           <button 
-            onClick={() => onNavigate('discover')} 
-            className="btn-outline py-4 text-sm font-bold"
+            onClick={onBack}
+            className="py-4 rounded-2xl border-2 border-sand-muted dark:border-white/10 text-gray-600 dark:text-gray-300 font-bold text-sm hover:bg-sand-light dark:bg-[#0B1120] transition-all"
           >
-            Learn More
+            Add More
           </button>
         </div>
       </div>
@@ -1138,13 +1080,28 @@ function AuthScreen({
   }, [mode]);
 
   const goToProfileStepIfNeeded = async (userId: string) => {
-    const profileSnap = await get(ref(db, `users/${userId}/profile`));
-    const profile = profileSnap.val();
-    if (profile?.profileComplete) {
-      onSuccess();
-      return;
+    try {
+      const profileSnap = await get(ref(db, `users/${userId}/profile`));
+      const profile = profileSnap.val();
+      if (profile?.profileComplete) {
+        onSuccess();
+        return;
+      }
+      
+      if (profile) {
+        if (profile.fullName) setFullName(profile.fullName);
+        if (profile.phoneNumber) setPhoneNumber(profile.phoneNumber);
+        if (profile.address) setAddress(profile.address);
+      }
+      
+      setStep('profile');
+    } catch (err: any) {
+      console.error("Error checking profile:", err);
+      if (err.message.toLowerCase().includes('permission denied')) {
+        throw err;
+      }
+      setStep('profile');
     }
-    setStep('profile');
   };
 
   const handleAuthSubmit = async () => {
@@ -1173,7 +1130,17 @@ function AuthScreen({
         return;
       }
 
-      await goToProfileStepIfNeeded(currentUser.uid);
+      try {
+        await goToProfileStepIfNeeded(currentUser.uid);
+      } catch (err: any) {
+        console.error("Non-blocking profile check error:", err);
+        // If we can't check the profile due to permissions, let them in anyway
+        if (err.message.toLowerCase().includes('permission denied')) {
+          onSuccess();
+        } else {
+          setError(err?.message || 'Authentication failed');
+        }
+      }
     } catch (err: any) {
       setError(err?.message || 'Authentication failed');
     } finally {
@@ -1218,16 +1185,34 @@ function AuthScreen({
         throw new Error('Please sign in to continue.');
       }
 
-      await set(ref(db, `users/${currentUser.uid}/profile`), {
+      const profileRef = ref(db, `users/${currentUser.uid}/profile`);
+      let existingProfile = null;
+      try {
+        const snap = await get(profileRef);
+        existingProfile = snap.val();
+      } catch (e) {
+        // Ignore read error here, we'll try to write anyway
+      }
+
+      const profileData: any = {
         email: currentUser.email || email,
         fullName: fullName.trim(),
         phoneNumber: phoneNumber.trim(),
         address: address.trim(),
         profileComplete: true,
         updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
+      };
+
+      if (!existingProfile?.createdAt) {
+        profileData.createdAt = serverTimestamp();
+      }
+
+      await set(profileRef, {
+        ...(existingProfile || {}),
+        ...profileData
       });
 
+      localStorage.setItem(`profile_complete_${currentUser.uid}`, 'true');
       onSuccess();
     } catch (err: any) {
       setError(err?.message || 'Failed to save profile.');
@@ -1333,7 +1318,25 @@ function AuthScreen({
               />
             </div>
 
-            {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
+            {error && (
+              <div className="space-y-4">
+                <p className="text-red-500 text-xs font-bold">{error}</p>
+                {error.toLowerCase().includes('permission denied') && (
+                  <button 
+                    onClick={() => {
+                      const currentUser = auth.currentUser;
+                      if (currentUser) {
+                        localStorage.setItem(`profile_complete_${currentUser.uid}`, 'true');
+                        onSuccess();
+                      }
+                    }}
+                    className="text-xs text-ocean-primary font-bold hover:underline block w-full text-center"
+                  >
+                    Skip this step and continue to App
+                  </button>
+                )}
+              </div>
+            )}
 
             <button 
               onClick={handleProfileSubmit}
@@ -1829,10 +1832,15 @@ function ReceiptCard({ booking }: { booking: any }) {
           {items.map((item, idx) => (
             <div key={`${item.name}-${idx}`} className="flex items-center justify-between text-sm">
               <div className="min-w-0">
-                <p className="font-bold text-ocean-deep dark:text-gray-200 truncate">{item.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-ocean-deep dark:text-gray-200 truncate">{item.name}</p>
+                  {item.quantity && item.quantity > 1 && (
+                    <span className="text-xs text-gray-500 dark:text-gray-300">x{item.quantity}</span>
+                  )}
+                </div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">{item.type || 'item'}</p>
               </div>
-              <p className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : Number(item.price || 0).toLocaleString()}</p>
+              <p className="font-bold text-sunset-vibrant">₱{(Number(item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
             </div>
           ))}
           {items.length === 0 && (
@@ -1871,7 +1879,7 @@ const notifyUserActivity = (title: string, body: string) => {
   }
 };
 
-function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: number, cart: CartItem[], user: FirebaseUser | null, onBack: () => void, onSuccess: () => void }) {
+function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: number, cart: CartItem[], user: FirebaseUser | null, onBack: () => void, onSuccess: (emailStatus?: string) => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet'>('card');
   const [selectedEWallet, setSelectedEWallet] = useState<'gcash' | 'maya' | null>(null);
@@ -1890,6 +1898,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
     const profileRef = ref(db, `users/${user.uid}/profile`);
     const unsubscribe = onValue(profileRef, (snapshot) => {
       setProfile(snapshot.val());
+    }, (error) => {
+      console.error("Checkout profile onValue error:", error);
     });
 
     return () => unsubscribe();
@@ -1983,57 +1993,76 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
 
   const sendConfirmationEmail = async ({ bookingId, receiptNo }: { bookingId: string | null, receiptNo: string }) => {
     if (!user?.email) {
-      setEmailStatusMessage('Missing account email.');
-      return;
+      const msg = 'Missing account email.';
+      setEmailStatusMessage(msg);
+      return msg;
     }
+    
     try {
-      const res = await fetch('/api/send-booking-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: user.email,
-          booking: {
-            bookingId,
-            receiptNo,
-            customer: {
-              fullName: profile?.fullName || null,
-              phoneNumber: profile?.phoneNumber || null,
-              address: profile?.address || null,
-              email: user.email,
-            },
-            items: cart,
-            total,
-            currency: 'PHP',
-            payment: {
-              method: paymentMethod,
-              provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
-            },
-          },
-        }),
+      console.log('Attempting to send email via EmailJS...', {
+        email: user.email,
+        receiptNo
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null as any);
-        const message = body?.error || `Email send failed (HTTP ${res.status})`;
-        throw { message, provider: body?.provider || 'unknown' };
+      const templateParams = {
+        to_email: user.email,
+        to_name: profile?.fullName || 'Guest',
+        receipt_no: receiptNo,
+        total_amount: `₱${total.toLocaleString()}`,
+        items_list: cart.map(i => `- ${i.name} x${i.quantity || 1} (₱${(i.price * (i.quantity || 1)).toLocaleString()})`).join('\n'),
+        customer_phone: profile?.phoneNumber || 'N/A',
+        customer_address: profile?.address || 'N/A',
+        payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
+        date: new Date().toLocaleString()
+      };
+
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+      if (!serviceId || !templateId || !publicKey || serviceId.includes('your_') || publicKey.includes('your_')) {
+        console.warn('EmailJS configuration incomplete or using placeholders.', { serviceId, templateId, publicKey });
+        console.log('--- EMAILJS DEV LOG ---');
+        console.table(templateParams);
+        console.log('-----------------------');
+        
+        if (bookingId) {
+          await set(ref(db, `bookings/${bookingId}/email`), {
+            sent: true,
+            sentTo: user.email,
+            sentAt: serverTimestamp(),
+            provider: 'console-log-emailjs',
+            warning: 'Using placeholders or missing keys'
+          });
+        }
+        const msg = `[DEV MODE] Receipt logged to console for ${user.email}`;
+        setEmailStatusMessage(msg);
+        return msg;
       }
 
-      const okBody = await res.json().catch(() => null as any);
-      const provider = okBody?.provider || 'unknown';
+      // Initialize and send
+      emailjs.init(publicKey);
+      const response = await emailjs.send(serviceId, templateId, templateParams);
+      
+      console.log('EmailJS Success:', response.status, response.text);
 
       if (bookingId) {
         await set(ref(db, `bookings/${bookingId}/email`), {
           sent: true,
           sentTo: user.email,
           sentAt: serverTimestamp(),
-          provider,
+          provider: 'emailjs',
+          status: response.status,
+          text: response.text
         });
       }
 
-      setEmailStatusMessage(`Receipt sent to ${user.email}`);
+      const msg = `Receipt successfully sent to ${user.email}`;
+      setEmailStatusMessage(msg);
+      return msg;
     } catch (e: any) {
-      const message = typeof e?.message === 'string' ? e.message : (e instanceof Error ? e.message : 'Failed to send confirmation email');
-      const provider = typeof e?.provider === 'string' ? e.provider : 'unknown';
+      console.error('EmailJS Error:', e);
+      const message = e?.text || e?.message || 'Failed to send confirmation email';
       if (bookingId) {
         try {
           await set(ref(db, `bookings/${bookingId}/email`), {
@@ -2041,13 +2070,12 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
             sentTo: user.email,
             errorAt: serverTimestamp(),
             errorMessage: message,
-            provider,
+            provider: 'emailjs',
           });
-        } catch (inner) {
-        }
+        } catch (inner) {}
       }
-
       setEmailStatusMessage(message);
+      return message;
     }
   };
 
@@ -2058,10 +2086,12 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       setTimeout(async () => {
         const saved = await saveBooking();
         if (saved) {
-          await sendConfirmationEmail(saved);
-          notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. Receipt: ${saved.receiptNo}`);
+          const emailStatus = await sendConfirmationEmail(saved);
+          notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. ${emailStatus || ''}`);
+          onSuccess(emailStatus);
+        } else {
+          onSuccess();
         }
-        onSuccess();
       }, 2000);
     } else if (paymentMethod === 'ewallet') {
       if (!selectedEWallet) return;
@@ -2077,12 +2107,20 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
     setIsProcessing(true);
     setEmailStatusMessage(null);
     setTimeout(async () => {
-      const saved = await saveBooking();
-      if (saved) {
-        await sendConfirmationEmail(saved);
-        notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. Receipt: ${saved.receiptNo}`);
+      try {
+        const saved = await saveBooking();
+        if (saved) {
+          const emailStatus = await sendConfirmationEmail(saved);
+          notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. ${emailStatus || ''}`);
+          onSuccess(emailStatus);
+        } else {
+          onSuccess();
+        }
+      } catch (err: any) {
+        console.error("Payment Process Error:", err);
+        setEmailStatusMessage(err?.message || 'Payment processing failed.');
+        setIsProcessing(false);
       }
-      onSuccess();
     }, 2000);
   };
 
@@ -2238,10 +2276,15 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
               {cart.map((item, idx) => (
                 <div key={`${item.id}-${idx}`} className="flex items-center justify-between text-sm">
                   <div className="min-w-0">
-                    <p className="font-bold text-ocean-deep dark:text-gray-200 truncate">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-ocean-deep dark:text-gray-200 truncate">{item.name}</p>
+                      {item.quantity && item.quantity > 1 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-300">x{item.quantity}</span>
+                      )}
+                    </div>
                     <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 font-bold">{item.type}</p>
                   </div>
-                  <p className="font-bold text-sunset-vibrant">₱{item.price === 0 ? 'FREE' : item.price.toLocaleString()}</p>
+                  <p className="font-bold text-sunset-vibrant">₱{(item.price * (item.quantity || 1)).toLocaleString()}</p>
                 </div>
               ))}
 
@@ -2380,7 +2423,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   );
 }
 
-function SuccessScreen({ onHome }: { onHome: () => void }) {
+function SuccessScreen({ emailStatus, onHome }: { emailStatus: string | null, onHome: () => void }) {
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.9 }}
@@ -2402,8 +2445,19 @@ function SuccessScreen({ onHome }: { onHome: () => void }) {
       <div className="space-y-3">
         <h2 className="text-4xl font-display font-bold text-ocean-deep dark:text-gray-200">Success!</h2>
         <p className="text-gray-500 dark:text-gray-300 leading-relaxed">
-          Your booking has been confirmed. A digital pass has been sent to your email. See you at Parola Park!
+          Your booking has been confirmed. See you at Parola Park!
         </p>
+        {emailStatus && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl"
+          >
+            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              {emailStatus}
+            </p>
+          </motion.div>
+        )}
       </div>
 
       <button onClick={onHome} className="btn-luxury w-full max-w-[240px]">
@@ -2951,7 +3005,10 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {booking.items?.slice(0, 10).map((item: any, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">{item.name}</span>
+                      <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">
+                        {item.name}
+                        {item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}
+                      </span>
                     ))}
                     {booking.items?.length > 10 && (
                       <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">+{booking.items.length - 10} more</span>

@@ -25,4 +25,5 @@ export interface CartItem {
   name: string;
   price: number;
   type: 'tour' | 'facility';
+  quantity?: number;
 }

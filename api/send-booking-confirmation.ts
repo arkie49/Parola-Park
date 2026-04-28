@@ -6,6 +6,7 @@ type BookingItem = {
   name: string;
   price: number;
   type: 'tour' | 'facility';
+  quantity?: number;
 };
 
 type BookingPayload = {
@@ -46,10 +47,13 @@ const buildReceiptHtml = (booking: BookingPayload) => {
       (i) =>
         `<tr>
           <td style="padding:10px 0;border-bottom:1px solid #eee;">
-            <div style="font-weight:700; color:#0b2b2e;">${escapeHtml(i.name)}</div>
+            <div style="font-weight:700; color:#0b2b2e;">
+              ${escapeHtml(i.name)}
+              ${i.quantity && i.quantity > 1 ? `<span style="font-size:12px; color:#6b7280; font-weight:normal;"> x${i.quantity}</span>` : ''}
+            </div>
             <div style="font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.12em; font-weight:700;">${escapeHtml(i.type)}</div>
           </td>
-          <td style="padding:10px 0;border-bottom:1px solid #eee; text-align:right; font-weight:800; color:#f97316;">₱${escapeHtml(formatMoney(i.price))}</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee; text-align:right; font-weight:800; color:#f97316;">₱${escapeHtml(formatMoney(i.price * (i.quantity || 1)))}</td>
         </tr>`
     )
     .join('');
