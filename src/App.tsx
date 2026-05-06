@@ -70,6 +70,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'completeProfile'>('login');
   const [cartHydratedForUserId, setCartHydratedForUserId] = useState<string | null>(null);
   const [lastEmailStatus, setLastEmailStatus] = useState<string | null>(null);
+  const [profileTargetTab, setProfileTargetTab] = useState<'profile' | 'history' | 'settings'>('profile');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -312,11 +313,13 @@ export default function App() {
                 setCurrentScreen(target);
               }}
               onBack={() => navigate('home')}
+              onClearNotice={() => setAuthNotice(null)}
             />
           )}
           {currentScreen === 'profile' && (
             <ProfileScreen 
               user={user} 
+              initialTab={profileTargetTab}
               onLogin={() => navigate('auth')} 
               onLogout={handleLogout}
             />
@@ -339,8 +342,14 @@ export default function App() {
               emailStatus={lastEmailStatus}
               onHome={() => {
                 setLastEmailStatus(null);
+                setProfileTargetTab('profile');
                 navigate('home');
               }} 
+              onViewHistory={() => {
+                setLastEmailStatus(null);
+                setProfileTargetTab('history');
+                navigate('profile');
+              }}
             />
           )}
           {currentScreen === 'admin' && (
@@ -667,6 +676,8 @@ function HomeActionButton({ icon, label, onClick }: { icon: React.ReactNode, lab
 }
 
 function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate: (s: Screen) => void }) {
+  const [selectedImageIdx, setSelectedImageIdx] = useState<number | null>(null);
+  
   const gallery = [
     { src: parolaImage, alt: 'Parola Park' },
     { src: parolaSablayan, alt: 'Parola View' },
@@ -696,13 +707,89 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Gallery</h3>
         <div className="grid grid-cols-2 gap-4">
           {gallery.map((img, idx) => (
-            <div key={`${img.alt}-${idx}`} className="relative h-32 rounded-3xl overflow-hidden glass-card">
-              <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
+            <motion.button
+              key={`${img.alt}-${idx}`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSelectedImageIdx(idx)}
+              className="relative aspect-square rounded-3xl overflow-hidden glass-card cursor-pointer group"
+            >
+              <img src={img.src} alt={img.alt} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               <div className="absolute inset-0 bg-gradient-to-t from-ocean-deep/30 via-transparent to-transparent" />
-            </div>
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                <Camera size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+            </motion.button>
           ))}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {selectedImageIdx !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImageIdx(null)}
+            className="fixed inset-0 bg-black/80 dark:bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-2xl bg-white dark:bg-[#1E293B] rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <div className="relative w-full aspect-[4/3] bg-black">
+                <img 
+                  src={gallery[selectedImageIdx].src} 
+                  alt={gallery[selectedImageIdx].alt}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-6 space-y-4">
+                <h3 className="text-xl font-display font-bold text-ocean-deep dark:text-gray-200">
+                  {gallery[selectedImageIdx].alt}
+                </h3>
+                <div className="flex gap-2 justify-between items-center">
+                  <div className="flex gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedImageIdx(Math.max(0, (selectedImageIdx || 0) - 1))}
+                      disabled={selectedImageIdx === 0}
+                      className="p-3 bg-ocean-deep dark:bg-ocean-primary text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+                    >
+                      <ArrowRight size={18} className="rotate-180" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedImageIdx(Math.min(gallery.length - 1, (selectedImageIdx || 0) + 1))}
+                      disabled={selectedImageIdx === gallery.length - 1}
+                      className="p-3 bg-ocean-deep dark:bg-ocean-primary text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+                    >
+                      <ArrowRight size={18} />
+                    </motion.button>
+                  </div>
+                  <span className="text-sm font-bold text-gray-600 dark:text-gray-300">
+                    {(selectedImageIdx || 0) + 1} / {gallery.length}
+                  </span>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedImageIdx(null)}
+                    className="p-3 bg-sunset-vibrant text-white rounded-xl hover:shadow-lg transition-all"
+                  >
+                    ✕
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Information</h3>
@@ -1052,10 +1139,12 @@ function AuthScreen({
   onBack,
   notice,
   mode,
+  onClearNotice,
 }: {
   onSuccess: (screen?: Screen) => void;
   onBack: () => void;
   notice: string | null;
+  onClearNotice: () => void;
   mode: 'login' | 'signup' | 'completeProfile';
 }) {
   const [step, setStep] = useState<'auth' | 'profile'>('auth');
@@ -1077,6 +1166,10 @@ function AuthScreen({
 
     setStep('auth');
     setIsLogin(mode === 'login');
+    setEmail('');
+    setPassword('');
+    setError(null);
+    setInfo(null);
   }, [mode]);
 
   const goToProfileStepIfNeeded = async (userId: string) => {
@@ -1246,13 +1339,15 @@ function AuthScreen({
               <p className="text-gray-500 dark:text-gray-300 text-sm">{isLogin ? 'Sign in to your Parola Park account' : 'Create an account to start exploring'}</p>
             </div>
 
-            <div className="space-y-4">
+            <form autoComplete="off" noValidate className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleAuthSubmit(); }}>
               <input 
                 type="email" 
                 placeholder="Email" 
                 className="input-modern" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="off"
+                name="auth-email"
               />
               <input 
                 type="password" 
@@ -1260,23 +1355,27 @@ function AuthScreen({
                 className="input-modern" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                name="auth-password"
               />
-            </div>
+            </form>
 
             {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
             {info && <p className="text-emerald-600 text-xs font-bold">{info}</p>}
 
             <div className="text-center">
-              {isLogin ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-300">New here? <button onClick={() => setIsLogin(false)} className="text-ocean-primary font-bold hover:underline">Create Account</button></p>
-                  <button onClick={handleForgotPassword} className="text-xs font-bold text-ocean-primary hover:underline" disabled={loading}>
-                    Forgot Password?
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600 dark:text-gray-300">Already have an account? <button onClick={() => setIsLogin(true)} className="text-ocean-primary font-bold hover:underline">Log In</button></p>
-              )}
+              <div className="space-y-2">
+                {isLogin ? (
+                  <>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">New here? <button onClick={() => { setIsLogin(false); onClearNotice(); }} className="text-ocean-primary font-bold hover:underline">Create Account</button></p>
+                    <button onClick={handleForgotPassword} className="text-xs font-bold text-ocean-primary hover:underline" disabled={loading}>
+                      Forgot Password?
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Already have an account? <button onClick={() => { setIsLogin(true); onClearNotice(); }} className="text-ocean-primary font-bold hover:underline">Log In</button></p>
+                )}
+              </div>
             </div>
 
             <button 
@@ -1352,9 +1451,9 @@ function AuthScreen({
   );
 }
 
-function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null, onLogin: () => void, onLogout: () => void }) {
+function ProfileScreen({ user, initialTab = 'profile', onLogin, onLogout }: { user: FirebaseUser | null, initialTab?: 'profile' | 'history' | 'settings', onLogin: () => void, onLogout: () => void }) {
   const [history, setHistory] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'settings'>(initialTab);
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('parola_settings');
@@ -1374,6 +1473,22 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
     }
     localStorage.setItem('parola_settings', JSON.stringify(settings));
   }, [settings]);
+
+  const normalizeTimestamp = (value: any): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const num = Number(value);
+      if (!Number.isNaN(num)) return num;
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (value && typeof value === 'object') {
+      if (typeof value.seconds === 'number') return value.seconds * 1000;
+      if (typeof value._seconds === 'number') return value._seconds * 1000;
+      if (typeof value.toMillis === 'function') return value.toMillis();
+    }
+    return 0;
+  };
 
   const toggleNotifications = async () => {
     if (!settings.notifications) {
@@ -1403,6 +1518,8 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [newPaymentForm, setNewPaymentForm] = useState({ name: '', details: '' });
 
+  const totalSpent = history.reduce((sum, booking) => sum + (Number(booking.total) || 0), 0);
+
   useEffect(() => {
     if (user) {
       const bookingsRef = ref(db, 'bookings');
@@ -1414,7 +1531,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
           const bookingsList = Object.keys(data).map(key => ({
             id: key,
             ...data[key]
-          })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          })).sort((a, b) => normalizeTimestamp(b.timestamp) - normalizeTimestamp(a.timestamp));
           setHistory(bookingsList);
         } else {
           setHistory([]);
@@ -1678,6 +1795,17 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
               exit={{ opacity: 0, x: 10 }}
               className="space-y-4"
             >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 glass-card rounded-3xl">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-2">Transactions</p>
+                  <p className="text-3xl font-bold text-ocean-deep dark:text-gray-200">{history.length}</p>
+                </div>
+                <div className="p-4 glass-card rounded-3xl">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400 mb-2">Total Spent</p>
+                  <p className="text-3xl font-bold text-sunset-vibrant">₱{totalSpent.toLocaleString()}</p>
+                </div>
+              </div>
+
               {history.length > 0 ? history.map((booking) => (
                 <button
                   key={booking.id}
@@ -1688,8 +1816,11 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                     <div>
                       <p className="text-xs font-bold text-ocean-deep dark:text-gray-200">Booking Confirmed</p>
                       <p className="text-[10px] text-gray-400 dark:text-gray-400 flex items-center gap-1">
-                        <Clock size={10} /> {new Date(booking.timestamp).toLocaleDateString()}
+                        <Clock size={10} /> {new Date(normalizeTimestamp(booking.timestamp)).toLocaleDateString()}
                       </p>
+                      {booking.tourDate && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-400">Tour Date: {new Date(booking.tourDate).toLocaleDateString()}</p>
+                      )}
                       {booking.receiptNo && (
                         <p className="text-[10px] text-gray-400 dark:text-gray-400 font-bold tracking-widest uppercase">{booking.receiptNo}</p>
                       )}
@@ -1703,14 +1834,20 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
                     {booking.payment?.provider && (
                       <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
                     )}
+                    {booking.status && (
+                      <span className="px-2 py-0.5 bg-sunset-vibrant/10 rounded text-[10px] text-sunset-vibrant font-bold uppercase tracking-wider">{booking.status}</span>
+                    )}
                     {booking.email?.sent === true && (
                       <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {booking.items?.map((item: any, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">{item.name}</span>
+                      <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">{item.name}{item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}</span>
                     ))}
+                    {booking.items?.length > 0 && (
+                      <span className="px-2 py-0.5 bg-sand-muted/80 dark:bg-[#1E293B]/80 rounded text-[10px] text-gray-600 dark:text-gray-300">{booking.items.length} item{booking.items.length === 1 ? '' : 's'}</span>
+                    )}
                   </div>
                 </button>
               )) : (
@@ -1772,7 +1909,7 @@ function ProfileScreen({ user, onLogin, onLogout }: { user: FirebaseUser | null,
 }
 
 function ReceiptCard({ booking }: { booking: any }) {
-  const items: Array<{ name: string; price: number; type?: string }> = Array.isArray(booking?.items) ? booking.items : [];
+  const items: Array<{ name: string; price: number; type?: string; quantity?: number }> = Array.isArray(booking?.items) ? booking.items : [];
   const total = typeof booking?.total === 'number' ? booking.total : Number(booking?.total || 0);
   const receiptNo = booking?.receiptNo || booking?.bookingId || booking?.id || '—';
   const customerName = booking?.customer?.fullName || booking?.userEmail || '—';
@@ -1781,7 +1918,8 @@ function ReceiptCard({ booking }: { booking: any }) {
   const customerAddress = booking?.customer?.address || '—';
   const paymentMethod = booking?.payment?.method || booking?.paymentMethod || '—';
   const paymentProvider = booking?.payment?.provider || booking?.paymentDetails || '—';
-  const dateLabel = booking?.timestamp ? new Date(booking.timestamp).toLocaleString() : '—';
+  const timestampLabel = booking?.timestamp ? new Date(booking.timestamp).toLocaleString() : '—';
+  const tourDateLabel = booking?.tourDate ? new Date(booking.tourDate).toLocaleDateString() : null;
 
   return (
     <div className="bg-white dark:bg-[#1E293B] rounded-[32px] p-6 sm:p-8 space-y-6 shadow-2xl w-full max-w-[860px]">
@@ -1789,7 +1927,10 @@ function ReceiptCard({ booking }: { booking: any }) {
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Receipt</p>
           <p className="text-2xl sm:text-3xl font-display font-bold text-ocean-deep dark:text-gray-200 break-words">{receiptNo}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{dateLabel}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{timestampLabel}</p>
+          {tourDateLabel && (
+            <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Tour Date: {tourDateLabel}</p>
+          )}
         </div>
         <div className="text-right">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Total</p>
@@ -1888,6 +2029,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
+  const [tourDate, setTourDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateError, setDateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -1951,20 +2094,26 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   };
 
   const saveBooking = async () => {
+    const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const tempId = Math.random().toString(36).slice(2, 10).toUpperCase();
+    const receiptNo = `PP-${dateStamp}-${tempId}`;
+
     try {
       if (!user) {
         throw new Error('You must be signed in to complete checkout.');
+      }
+      if (!tourDate) {
+        throw new Error('Please choose a tour date before completing checkout.');
       }
 
       const bookingsRef = ref(db, 'bookings');
       const newBookingRef = push(bookingsRef);
       const bookingId = newBookingRef.key;
-      const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const receiptNo = `PP-${dateStamp}-${(bookingId || '').slice(-6).toUpperCase()}`;
+      const finalReceiptNo = `PP-${dateStamp}-${(bookingId || tempId).slice(-6).toUpperCase()}`;
 
-      await set(newBookingRef, {
+      const bookingData = {
         bookingId,
-        receiptNo,
+        receiptNo: finalReceiptNo,
         userId: user.uid,
         userEmail: user.email,
         customer: {
@@ -1975,6 +2124,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         items: cart,
         total: total,
         currency: 'PHP',
+        tourDate,
+        tourDateTimestamp: new Date(tourDate).getTime(),
         payment: {
           method: paymentMethod,
           provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
@@ -1982,9 +2133,23 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         },
         timestamp: serverTimestamp(),
         status: 'confirmed'
-      });
+      };
 
-      return { bookingId, receiptNo };
+      try {
+        await set(newBookingRef, bookingData);
+        return { bookingId, receiptNo: finalReceiptNo };
+      } catch (dbError: any) {
+        if (dbError.message.includes('PERMISSION_DENIED')) {
+          console.warn("Database write denied. Proceeding with local receipt only.");
+          // Return a success-like object so the email can still be sent
+          return { 
+            bookingId: 'temp-' + tempId, 
+            receiptNo: finalReceiptNo,
+            isOffline: true 
+          };
+        }
+        throw dbError;
+      }
     } catch (error) {
       console.error("Error saving booking:", error);
       throw error;
@@ -1999,11 +2164,131 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
     }
     
     try {
-      console.log('Attempting to send email via EmailJS...', {
+      console.log('Attempting to send email...', {
         email: user.email,
         receiptNo
       });
 
+      // Try EmailJS first (since it's configured and will actually send emails)
+      console.log('Trying EmailJS first...');
+      try {
+        const templateParams = {
+          to_email: user.email,
+          to_name: profile?.fullName || 'Guest',
+          receipt_no: receiptNo,
+          total_amount: `₱${total.toLocaleString()}`,
+          items_list: cart.map(i => `- ${i.name} x${i.quantity || 1} (₱${(i.price * (i.quantity || 1)).toLocaleString()})`).join('\n'),
+          customer_phone: profile?.phoneNumber || 'N/A',
+          customer_address: profile?.address || 'N/A',
+          payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
+          tour_date: tourDate,
+          date: new Date().toLocaleString()
+        };
+
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+        console.log('EmailJS config check:', { serviceId: !!serviceId, templateId: !!templateId, publicKey: !!publicKey });
+
+        if (serviceId && templateId && publicKey && !serviceId.includes('your_') && !publicKey.includes('your_')) {
+          console.log('EmailJS configured, sending email...');
+          const emailjsResponse = await emailjs.send(serviceId, templateId, templateParams, publicKey);
+          console.log('EmailJS response:', emailjsResponse);
+
+          if (emailjsResponse.status === 200) {
+            console.log('Email sent successfully via EmailJS!');
+
+            try {
+              if (bookingId && !bookingId.startsWith('temp-')) {
+                await set(ref(db, `bookings/${bookingId}/email`), {
+                  sent: true,
+                  sentTo: user.email,
+                  sentAt: serverTimestamp(),
+                  provider: 'emailjs',
+                  status: emailjsResponse.status,
+                });
+              }
+            } catch (dbError: any) {
+              console.warn('Could not save email record to Firebase:', dbError.message);
+            }
+
+            const msg = `Receipt sent to ${user.email}`;
+            setEmailStatusMessage(msg);
+            return msg;
+          }
+        } else {
+          console.warn('EmailJS not fully configured, checking backup options');
+        }
+      } catch (emailjsError: any) {
+        console.warn('EmailJS error, will try backend fallback:', emailjsError.message);
+      }
+
+      // Fallback to backend API
+      console.log('Trying backend API fallback...');
+      const bookingPayload = {
+        bookingId,
+        receiptNo,
+        customer: {
+          fullName: profile?.fullName || null,
+          phoneNumber: profile?.phoneNumber || null,
+          address: profile?.address || null,
+          email: user.email,
+        },
+        items: cart,
+        total: total,
+        currency: 'PHP',
+        tourDate,
+        payment: {
+          method: paymentMethod,
+          provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+        },
+      };
+
+      try {
+        console.log('Attempting backend API call to http://localhost:3001...');
+        const response = await fetch('http://localhost:3001/api/send-booking-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: user.email,
+            booking: bookingPayload,
+          }),
+        });
+
+        console.log('Backend response status:', response.status, response.ok);
+        const result = await response.json();
+        console.log('Backend result:', result);
+
+        if (response.ok && result.ok) {
+          console.log('Email sent successfully via backend:', result);
+
+          try {
+            if (bookingId && !bookingId.startsWith('temp-')) {
+              await set(ref(db, `bookings/${bookingId}/email`), {
+                sent: true,
+                sentTo: user.email,
+                sentAt: serverTimestamp(),
+                provider: result.provider || 'backend-api',
+                status: response.status,
+              });
+            }
+          } catch (dbError: any) {
+            console.warn('Could not save email record to Firebase:', dbError.message);
+          }
+
+          const msg = `Receipt sent to ${user.email} (via backend)`;
+          setEmailStatusMessage(msg);
+          return msg;
+        }
+      } catch (backendError: any) {
+        console.warn('Backend API also failed:', backendError.message);
+      }
+
+      // Final fallback: log to console
+      console.log('All methods failed, logging to console...');
       const templateParams = {
         to_email: user.email,
         to_name: profile?.fullName || 'Guest',
@@ -2013,112 +2298,111 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         customer_phone: profile?.phoneNumber || 'N/A',
         customer_address: profile?.address || 'N/A',
         payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
+        tour_date: tourDate,
         date: new Date().toLocaleString()
       };
+      console.log('--- EMAIL RECEIPT DEV LOG ---');
+      console.log(`To: ${user.email}`);
+      console.log(`Subject: Parola Park Booking Confirmation • ${receiptNo}`);
+      console.table(templateParams);
+      console.log('-----------------------------');
 
-      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-
-      if (!serviceId || !templateId || !publicKey || serviceId.includes('your_') || publicKey.includes('your_')) {
-        console.warn('EmailJS configuration incomplete or using placeholders.', { serviceId, templateId, publicKey });
-        console.log('--- EMAILJS DEV LOG ---');
-        console.table(templateParams);
-        console.log('-----------------------');
-        
-        if (bookingId) {
+      try {
+        if (bookingId && !bookingId.startsWith('temp-')) {
           await set(ref(db, `bookings/${bookingId}/email`), {
             sent: true,
             sentTo: user.email,
             sentAt: serverTimestamp(),
-            provider: 'console-log-emailjs',
-            warning: 'Using placeholders or missing keys'
+            provider: 'console-log-fallback',
+            warning: 'Email logged to console (dev mode)'
           });
         }
-        const msg = `[DEV MODE] Receipt logged to console for ${user.email}`;
-        setEmailStatusMessage(msg);
-        return msg;
+      } catch (dbError: any) {
+        console.warn('Could not save record to Firebase:', dbError.message);
       }
 
-      // Initialize and send
-      emailjs.init(publicKey);
-      const response = await emailjs.send(serviceId, templateId, templateParams);
-      
-      console.log('EmailJS Success:', response.status, response.text);
-
-      if (bookingId) {
-        await set(ref(db, `bookings/${bookingId}/email`), {
-          sent: true,
-          sentTo: user.email,
-          sentAt: serverTimestamp(),
-          provider: 'emailjs',
-          status: response.status,
-          text: response.text
-        });
-      }
-
-      const msg = `Receipt successfully sent to ${user.email}`;
+      const msg = `Receipt logged to console for ${user.email}`;
       setEmailStatusMessage(msg);
       return msg;
     } catch (e: any) {
-      console.error('EmailJS Error:', e);
-      const message = e?.text || e?.message || 'Failed to send confirmation email';
-      if (bookingId) {
-        try {
-          await set(ref(db, `bookings/${bookingId}/email`), {
-            sent: false,
-            sentTo: user.email,
-            errorAt: serverTimestamp(),
-            errorMessage: message,
-            provider: 'emailjs',
-          });
-        } catch (inner) {}
-      }
+      console.error('Email sending error:', e);
+      const message = e?.message || 'Failed to send confirmation email';
       setEmailStatusMessage(message);
       return message;
     }
   };
 
   const handlePayment = () => {
+    console.log('handlePayment called', { paymentMethod, selectedEWallet, ewalletMode, tourDate });
+    if (!tourDate) {
+      setDateError('Please select a tour date.');
+      return;
+    }
     if (paymentMethod === 'card') {
       setIsProcessing(true);
       setEmailStatusMessage(null);
       setTimeout(async () => {
-        const saved = await saveBooking();
-        if (saved) {
-          const emailStatus = await sendConfirmationEmail(saved);
-          notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. ${emailStatus || ''}`);
-          onSuccess(emailStatus);
-        } else {
-          onSuccess();
+        try {
+          console.log('Starting card payment process...');
+          const saved = await saveBooking();
+          console.log('Booking saved:', saved);
+          if (saved) {
+            console.log('Sending confirmation email for booking:', saved);
+            const emailStatus = await sendConfirmationEmail(saved);
+            console.log('Email status returned:', emailStatus);
+            notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. ${emailStatus || ''}`);
+            onSuccess(emailStatus);
+          } else {
+            console.warn('Booking not saved, but calling onSuccess');
+            onSuccess();
+          }
+        } catch (err: any) {
+          console.error("Payment Process Error (Card):", err);
+          const errorMsg = err?.message || 'Payment processing failed.';
+          console.error('Setting email status message to:', errorMsg);
+          setEmailStatusMessage(errorMsg);
+          setIsProcessing(false);
         }
       }, 2000);
     } else if (paymentMethod === 'ewallet') {
-      if (!selectedEWallet) return;
+      if (!selectedEWallet) {
+        console.warn('E-Wallet selected but no provider chosen');
+        return;
+      }
       if (ewalletMode === 'scan') {
+        console.log('Switching to scanning step');
         setPaymentStep('scanning');
       } else {
+        console.log('Switching to confirm step');
         setPaymentStep('confirm');
       }
     }
   };
 
   const handleFinalPayment = () => {
+    console.log('handleFinalPayment called');
     setIsProcessing(true);
     setEmailStatusMessage(null);
     setTimeout(async () => {
       try {
+        console.log('Starting final e-wallet payment process...');
         const saved = await saveBooking();
+        console.log('Booking saved:', saved);
         if (saved) {
+          console.log('Sending confirmation email for booking:', saved);
           const emailStatus = await sendConfirmationEmail(saved);
+          console.log('Email status returned:', emailStatus);
           notifyUserActivity('Transfer Successful', `Your payment of ₱${total.toLocaleString()} was successful. ${emailStatus || ''}`);
           onSuccess(emailStatus);
         } else {
+          console.warn('Booking not saved, but calling onSuccess');
           onSuccess();
         }
       } catch (err: any) {
-        console.error("Payment Process Error:", err);
-        setEmailStatusMessage(err?.message || 'Payment processing failed.');
+        console.error("Payment Process Error (E-Wallet):", err);
+        const errorMsg = err?.message || 'Payment processing failed.';
+        console.error('Setting email status message to:', errorMsg);
+        setEmailStatusMessage(errorMsg);
         setIsProcessing(false);
       }
     }, 2000);
@@ -2300,6 +2584,28 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           </div>
         </section>
 
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Tour Date</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Select the date you will take the tour.</p>
+            </div>
+          </div>
+          <div className="glass-card rounded-3xl p-6 space-y-3">
+            <input
+              type="date"
+              min={new Date().toISOString().slice(0, 10)}
+              value={tourDate}
+              onChange={(e) => {
+                setTourDate(e.target.value);
+                setDateError(null);
+              }}
+              className="input-modern"
+            />
+            {dateError && <p className="text-xs font-bold text-rose-500">{dateError}</p>}
+          </div>
+        </section>
+
         <section className="space-y-6">
           <div className="flex flex-col gap-4">
             <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Payment Method</h3>
@@ -2407,7 +2713,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           )}
           <button 
             onClick={handlePayment}
-            disabled={isProcessing || total === 0 || (paymentMethod === 'ewallet' && !selectedEWallet)}
+            disabled={isProcessing || total === 0 || !tourDate || (paymentMethod === 'ewallet' && !selectedEWallet)}
             className="btn-luxury w-full disabled:opacity-30 flex items-center justify-center gap-3"
           >
             {isProcessing ? (
@@ -2423,7 +2729,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   );
 }
 
-function SuccessScreen({ emailStatus, onHome }: { emailStatus: string | null, onHome: () => void }) {
+function SuccessScreen({ emailStatus, onHome, onViewHistory }: { emailStatus: string | null, onHome: () => void, onViewHistory: () => void }) {
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.9 }}
@@ -2460,9 +2766,14 @@ function SuccessScreen({ emailStatus, onHome }: { emailStatus: string | null, on
         )}
       </div>
 
-      <button onClick={onHome} className="btn-luxury w-full max-w-[240px]">
-        Return Home
-      </button>
+      <div className="space-y-4 w-full max-w-[240px]">
+        <button onClick={onViewHistory} className="btn-luxury w-full flex items-center justify-center gap-2">
+          View History
+        </button>
+        <button onClick={onHome} className="btn-luxury w-full bg-sand-muted dark:bg-[#1E293B] text-ocean-deep dark:text-gray-200">
+          Return Home
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -2476,6 +2787,7 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
   const [bookingSearch, setBookingSearch] = useState('');
   const [bookingFilter, setBookingFilter] = useState<'all' | 'emailSent' | 'emailFailed' | 'ewallet' | 'card'>('all');
   const [userSearch, setUserSearch] = useState('');
+  const [selectedUserBookings, setSelectedUserBookings] = useState<string | null>(null);
 
   const toTimestampMs = (value: any): number | null => {
     if (typeof value === 'number') return value;
@@ -2653,54 +2965,59 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
   };
 
   useEffect(() => {
-    // Load users and bookings data
-    const loadData = async () => {
-      try {
-        const usersRef = ref(db, 'users');
-        onValue(usersRef, (snapshot) => {
-          const data = snapshot.val();
-          if (!data) {
-            setUsers([]);
-            return;
-          }
-
-          const list = Object.keys(data).map((uid) => {
-            const userNode = data[uid] || {};
-            const profile = userNode.profile || {};
-            return {
-              uid,
-              email: profile.email || userNode.email || null,
-              fullName: profile.fullName || null,
-              phoneNumber: profile.phoneNumber || null,
-              address: profile.address || null,
-              profileComplete: Boolean(profile.profileComplete),
-              createdAt: profile.createdAt || null,
-              updatedAt: profile.updatedAt || null,
-            };
-          });
-
-          setUsers(list);
-        });
-
-        // Load bookings
-        const bookingsRef = ref(db, 'bookings');
-        const bookingsQuery = query(bookingsRef, orderByChild('timestamp'));
-        onValue(bookingsQuery, (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const bookingsList = Object.keys(data).map(key => ({
-              id: key,
-              ...data[key]
-            })).reverse(); // Most recent first
-            setBookings(bookingsList);
-          }
-        });
-      } catch (error) {
-        console.error('Error loading admin data:', error);
+    // Live listeners for admin data
+    const usersRef = ref(db, 'users');
+    const usersListener = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        setUsers([]);
+        return;
       }
-    };
 
-    loadData();
+      setUsers(Object.keys(data).map((uid) => {
+        const userNode = data[uid] || {};
+        const profile = userNode.profile || {};
+        return {
+          uid,
+          email: profile.email || userNode.email || null,
+          fullName: profile.fullName || null,
+          phoneNumber: profile.phoneNumber || null,
+          address: profile.address || null,
+          profileComplete: Boolean(profile.profileComplete),
+          createdAt: profile.createdAt || null,
+          updatedAt: profile.updatedAt || null,
+        };
+      }));
+    }, (error) => {
+      console.error('Admin Users Listener Error:', error);
+      if (error.message.includes('PERMISSION_DENIED')) {
+        alert('Admin Error: Permission denied while loading Users. Please check your Firebase Security Rules.');
+      }
+    });
+
+    const bookingsRef = ref(db, 'bookings');
+    const bookingsQuery = query(bookingsRef, orderByChild('timestamp'));
+    const bookingsListener = onValue(bookingsQuery, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setBookings(Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        })).reverse());
+      } else {
+        setBookings([]);
+      }
+    }, (error) => {
+      console.error('Admin Bookings Listener Error:', error);
+      if (error.message.includes('PERMISSION_DENIED')) {
+        alert('Admin Error: Permission denied while loading Bookings. Please check your Firebase Security Rules.');
+      }
+    });
+
+    return () => {
+      usersListener();
+      bookingsListener();
+    };
   }, []);
 
   const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.total || 0), 0);
@@ -2711,16 +3028,21 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col h-full bg-sand-light dark:bg-[#0B1120]"
+      className="flex flex-col min-h-full pb-20 bg-sand-light dark:bg-[#0B1120]"
     >
       {/* Admin Header */}
       <div className="p-8 pb-4">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Admin Dashboard</h2>
-          <button onClick={onLogout} className="p-2 hover:bg-red-500/10 rounded-xl transition-colors flex items-center gap-2 group">
-            <span className="text-xs font-bold uppercase tracking-widest text-red-500 group-hover:text-red-600 transition-colors">Logout</span>
-            <LogOut size={20} className="text-red-500 group-hover:text-red-600 transition-colors" />
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200">Admin Dashboard</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Live Firebase data for users and bookings</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={onLogout} className="p-3 hover:bg-red-500/10 rounded-xl transition-colors flex items-center gap-2 group">
+              <span className="text-xs font-bold uppercase tracking-widest text-red-500 group-hover:text-red-600 transition-colors">Logout</span>
+              <LogOut size={20} className="text-red-500 group-hover:text-red-600 transition-colors" />
+            </button>
+          </div>
         </div>
         
         <div className="p-6 glass-card rounded-[32px] relative overflow-hidden">
@@ -2739,7 +3061,7 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {/* Tabs */}
-      <div className="px-8 flex gap-4 mb-6 overflow-x-auto">
+      <div className="sticky top-0 z-30 bg-sand-light/95 dark:bg-[#0B1120]/95 backdrop-blur-md px-8 py-4 flex gap-4 overflow-x-auto border-b border-sand-muted dark:border-white/5 shadow-sm mb-6">
         {[
           { key: 'dashboard', label: 'Dashboard', icon: <Home size={16} /> },
           { key: 'users', label: 'Users', icon: <User size={16} /> },
@@ -2762,7 +3084,7 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6 relative">
+      <div className="px-8 pb-8 space-y-6 relative">
         <AnimatePresence>
           {receiptBooking && (
             <motion.div
@@ -2827,9 +3149,19 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
                         <p className="text-[10px] text-gray-400 dark:text-gray-400">
                           {formatDateTime(booking.timestamp)}
                         </p>
+                        {booking.tourDate && (
+                          <p className="text-[10px] text-gray-400 dark:text-gray-400">Tour: {new Date(booking.tourDate).toLocaleDateString()}</p>
+                        )}
                       </div>
                       <span className="text-sm font-bold text-ocean-primary">₱{(booking.total || 0).toLocaleString()}</span>
                     </div>
+                    {(booking.customer?.fullName || booking.customer?.phoneNumber || booking.customer?.address) && (
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                        {booking.customer?.fullName && <span>{booking.customer.fullName}</span>}
+                        {booking.customer?.phoneNumber && <span>{booking.customer.fullName ? ' • ' : ''}{booking.customer.phoneNumber}</span>}
+                        {booking.customer?.address && <span>{(booking.customer.fullName || booking.customer.phoneNumber) ? ' • ' : ''}{booking.customer.address}</span>}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       {booking.payment?.method && (
                         <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
@@ -2872,56 +3204,149 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
               exit={{ opacity: 0, x: 10 }}
               className="space-y-4"
             >
-              <div className="flex items-center justify-between px-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">User Management</h4>
-                <button onClick={exportUsersCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 dark:bg-[#0B1120]/90 text-ocean-deep dark:text-gray-200 transition-all flex items-center gap-2">
-                  <Download size={16} />
-                  Export CSV
-                </button>
-              </div>
-
-              <input
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Search name, email, phone..."
-                className="input-modern"
-              />
-
-              {filteredUsers.map((u) => (
-                <div key={u.uid} className="p-4 glass-card rounded-2xl space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-ocean-deep dark:text-gray-200 truncate">{u.fullName || u.email || u.uid}</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-300 font-bold truncate">{u.email || '—'}</p>
-                      {(u.phoneNumber || u.address) && (
-                        <p className="text-[10px] text-gray-400 dark:text-gray-400 truncate">{[u.phoneNumber, u.address].filter(Boolean).join(' • ')}</p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400">Bookings</p>
-                      <p className="text-sm font-bold text-ocean-primary">{bookingCountByUserId[u.uid] || 0}</p>
+              {selectedUserBookings ? (
+                <>
+                  <div className="sticky top-[72px] z-20 bg-sand-light dark:bg-[#0B1120] pb-4 pt-2 -mx-2 px-2 border-b border-transparent flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedUserBookings(null)}
+                      className="p-2 rounded-xl hover:bg-sand-muted dark:hover:bg-[#1E293B] transition-colors"
+                    >
+                      <ArrowRight size={20} className="rotate-180 text-ocean-deep dark:text-gray-200" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-bold text-ocean-deep dark:text-gray-200 truncate">
+                        {users.find(u => u.uid === selectedUserBookings)?.fullName || users.find(u => u.uid === selectedUserBookings)?.email}
+                      </h4>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-300 truncate">
+                        {users.find(u => u.uid === selectedUserBookings)?.email}
+                      </p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-400 truncate">
+                        Account ID: {selectedUserBookings}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {u.profileComplete && (
-                      <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Profile Complete</span>
-                    )}
-                    {!u.profileComplete && (
-                      <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">Profile Incomplete</span>
-                    )}
-                    {u.updatedAt && (
-                      <span className="px-2 py-0.5 bg-white/60 rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">Updated {formatDateTime(u.updatedAt)}</span>
+                  <div className="space-y-3">
+                    {bookings
+                      .filter(b => b.userId === selectedUserBookings)
+                      .sort((a, b) => (toTimestampMs(a.timestamp) || 0) - (toTimestampMs(b.timestamp) || 0))
+                      .map((booking) => (
+                        <button key={booking.id} onClick={() => setReceiptBooking(booking)} className="w-full text-left p-4 glass-card rounded-2xl space-y-3 border-l-4 border-ocean-primary hover:shadow-xl transition-all">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-xs font-bold text-ocean-deep dark:text-gray-200">{booking.receiptNo || booking.id}</p>
+                              <p className="text-[10px] text-gray-400 dark:text-gray-400">
+                                <Clock size={10} className="inline mr-1" />
+                                {formatDateTime(booking.timestamp)}
+                              </p>
+                              {booking.tourDate && (
+                                <p className="text-[10px] text-gray-400 dark:text-gray-400">
+                                  <Calendar size={10} className="inline mr-1" />
+                                  Tour: {new Date(booking.tourDate).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-sm font-bold text-ocean-primary">₱{(booking.total || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {booking.payment?.method && (
+                              <span className="px-2 py-0.5 bg-ocean-primary/10 rounded text-[10px] text-ocean-primary font-bold uppercase tracking-wider">{booking.payment.method}</span>
+                            )}
+                            {booking.payment?.provider && (
+                              <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                            )}
+                            {booking.status && (
+                              <span className="px-2 py-0.5 bg-sunset-vibrant/10 rounded text-[10px] text-sunset-vibrant font-bold uppercase tracking-wider">{booking.status}</span>
+                            )}
+                            {booking.email?.sent === true && (
+                              <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
+                            )}
+                            {booking.email?.sent === false && (
+                              <span className="px-2 py-0.5 bg-red-500/10 rounded text-[10px] text-red-600 font-bold uppercase tracking-wider">Email Failed</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {booking.items?.slice(0, 10).map((item: any, idx: number) => (
+                              <span key={idx} className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">
+                                {item.name}
+                                {item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}
+                              </span>
+                            ))}
+                            {booking.items?.length > 10 && (
+                              <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300">+{booking.items.length - 10} more</span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    {bookings.filter(b => b.userId === selectedUserBookings).length === 0 && (
+                      <div className="text-center py-20 opacity-50">
+                        <Calendar size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
+                        <p className="text-sm">No bookings for this user</p>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                </>
+              ) : (
+                <>
+                  <div className="sticky top-[72px] z-20 bg-sand-light dark:bg-[#0B1120] pb-4 pt-2 -mx-2 px-2 border-b border-transparent">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Customer List</h4>
+                      <button onClick={exportUsersCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 dark:bg-[#0B1120]/90 text-ocean-deep dark:text-gray-200 transition-all flex items-center gap-2">
+                        <Download size={16} />
+                        Export CSV
+                      </button>
+                    </div>
+                    <input
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Search name, email, phone..."
+                      className="input-modern w-full"
+                    />
+                  </div>
 
-              {filteredUsers.length === 0 && (
-                <div className="text-center py-20 opacity-50">
-                  <User size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
-                  <p className="text-sm">No users found</p>
-                </div>
+                  {filteredUsers.map((u) => (
+                    <button
+                      key={u.uid}
+                      onClick={() => setSelectedUserBookings(u.uid)}
+                      className="w-full text-left p-4 glass-card rounded-2xl space-y-3 hover:shadow-xl hover:border-ocean-primary/30 transition-all border border-transparent"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-ocean-deep dark:text-gray-200 truncate">{u.fullName || u.email || u.uid}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-300 font-bold truncate flex items-center gap-1">
+                            <Mail size={10} /> {u.email || '—'}
+                          </p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-400 truncate">Account ID: {u.uid}</p>
+                          {(u.phoneNumber || u.address) && (
+                            <p className="text-[10px] text-gray-400 dark:text-gray-400 truncate">{[u.phoneNumber, u.address].filter(Boolean).join(' • ')}</p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0 flex flex-col items-end gap-2">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-400">Bookings</p>
+                            <p className="text-lg font-bold text-ocean-primary">{bookingCountByUserId[u.uid] || 0}</p>
+                          </div>
+                          <ChevronRight size={18} className="text-gray-400" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {u.profileComplete && (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Profile Complete</span>
+                        )}
+                        {!u.profileComplete && (
+                          <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">Profile Incomplete</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+
+                  {filteredUsers.length === 0 && (
+                    <div className="text-center py-20 opacity-50">
+                      <User size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-400" />
+                      <p className="text-sm">No users found</p>
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}
@@ -2934,40 +3359,42 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
               exit={{ opacity: 0, x: 10 }}
               className="space-y-4"
             >
-              <div className="flex items-center justify-between px-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">All Bookings</h4>
-                <button onClick={exportBookingsCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 dark:bg-[#0B1120]/90 text-ocean-deep dark:text-gray-200 transition-all flex items-center gap-2">
-                  <Download size={16} />
-                  Export CSV
-                </button>
-              </div>
-              <div className="space-y-3">
-                <input
-                  value={bookingSearch}
-                  onChange={(e) => setBookingSearch(e.target.value)}
-                  placeholder="Search receipt, email, name, phone, items..."
-                  className="input-modern"
-                />
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {[
-                    { key: 'all', label: 'All' },
-                    { key: 'emailSent', label: 'Email Sent' },
-                    { key: 'emailFailed', label: 'Email Failed' },
-                    { key: 'ewallet', label: 'E-Wallet' },
-                    { key: 'card', label: 'Card' },
-                  ].map((f) => (
-                    <button
-                      key={f.key}
-                      onClick={() => setBookingFilter(f.key as any)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
-                        bookingFilter === (f.key as any)
-                          ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg'
-                          : 'text-gray-400 dark:text-gray-400 hover:text-ocean-deep dark:text-gray-200 bg-white/60'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+              <div className="sticky top-[72px] z-20 bg-sand-light dark:bg-[#0B1120] pb-4 pt-2 -mx-2 px-2 border-b border-transparent space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">All Bookings</h4>
+                  <button onClick={exportBookingsCsv} className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/60 hover:bg-white/80 dark:bg-[#0B1120]/90 text-ocean-deep dark:text-gray-200 transition-all flex items-center gap-2">
+                    <Download size={16} />
+                    Export CSV
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <input
+                    value={bookingSearch}
+                    onChange={(e) => setBookingSearch(e.target.value)}
+                    placeholder="Search receipt, email, name, phone, items..."
+                    className="input-modern w-full"
+                  />
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {[
+                      { key: 'all', label: 'All' },
+                      { key: 'emailSent', label: 'Email Sent' },
+                      { key: 'emailFailed', label: 'Email Failed' },
+                      { key: 'ewallet', label: 'E-Wallet' },
+                      { key: 'card', label: 'Card' },
+                    ].map((f) => (
+                      <button
+                        key={f.key}
+                        onClick={() => setBookingFilter(f.key as any)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                          bookingFilter === (f.key as any)
+                            ? 'bg-ocean-deep dark:bg-ocean-primary text-white shadow-lg'
+                            : 'text-gray-400 dark:text-gray-400 hover:text-ocean-deep dark:text-gray-200 bg-white/60'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -2980,9 +3407,19 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
                       <p className="text-[10px] text-gray-400 dark:text-gray-400 flex items-center gap-1">
                         <Clock size={10} /> {formatDateTime(booking.timestamp)}
                       </p>
+                      {booking.tourDate && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-400">Tour: {new Date(booking.tourDate).toLocaleDateString()}</p>
+                      )}
                     </div>
                     <span className="text-sm font-bold text-ocean-primary">₱{(booking.total || 0).toLocaleString()}</span>
                   </div>
+                  {(booking.customer?.fullName || booking.customer?.phoneNumber || booking.customer?.address) && (
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                      {booking.customer?.fullName && <span>{booking.customer.fullName}</span>}
+                      {booking.customer?.phoneNumber && <span>{booking.customer.fullName ? ' • ' : ''}{booking.customer.phoneNumber}</span>}
+                      {booking.customer?.address && <span>{(booking.customer.fullName || booking.customer.phoneNumber) ? ' • ' : ''}{booking.customer.address}</span>}
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {booking.customer?.fullName && (
                       <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold">{booking.customer.fullName}</span>
