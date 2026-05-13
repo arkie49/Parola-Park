@@ -6,7 +6,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
-import emailjs from '@emailjs/browser';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -2239,70 +2238,6 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
     }
     
     try {
-      console.log('Attempting to send email...', {
-        email: user.email,
-        receiptNo
-      });
-
-      // Try EmailJS first (since it's configured and will actually send emails)
-      console.log('Trying EmailJS first...');
-      try {
-        const templateParams = {
-          to_email: user.email,
-          to_name: profile?.fullName || 'Guest',
-          receipt_no: receiptNo,
-          total_amount: `₱${total.toLocaleString()}`,
-          items_list: cart.map(i => `- ${i.name} x${i.quantity || 1} (₱${(i.price * (i.quantity || 1)).toLocaleString()})`).join('\n'),
-          customer_phone: profile?.phoneNumber || 'N/A',
-          customer_address: profile?.address || 'N/A',
-          payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
-          payment_ref: referenceNumber || 'N/A',
-          payment_account: selectedEWallet ? parkEWallets[selectedEWallet].number : 'N/A',
-          tour_date: tourDate,
-          date: new Date().toLocaleString()
-        };
-
-        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-
-        console.log('EmailJS config check:', { serviceId: !!serviceId, templateId: !!templateId, publicKey: !!publicKey });
-
-        if (serviceId && templateId && publicKey && !serviceId.includes('your_') && !publicKey.includes('your_')) {
-          console.log('EmailJS configured, sending email...');
-          const emailjsResponse = await emailjs.send(serviceId, templateId, templateParams, publicKey);
-          console.log('EmailJS response:', emailjsResponse);
-
-          if (emailjsResponse.status === 200) {
-            console.log('Email sent successfully via EmailJS!');
-
-            try {
-              if (bookingId && !bookingId.startsWith('temp-')) {
-                await set(ref(db, `bookings/${bookingId}/email`), {
-                  sent: true,
-                  sentTo: user.email,
-                  sentAt: serverTimestamp(),
-                  provider: 'emailjs',
-                  status: emailjsResponse.status,
-                });
-              }
-            } catch (dbError: any) {
-              console.warn('Could not save email record to Firebase:', dbError.message);
-            }
-
-            const msg = `Receipt sent to ${user.email}`;
-            setEmailStatusMessage(msg);
-            return msg;
-          }
-        } else {
-          console.warn('EmailJS not fully configured, checking backup options');
-        }
-      } catch (emailjsError: any) {
-        console.warn('EmailJS error, will try backend fallback:', emailjsError.message);
-      }
-
-      // Fallback to backend API
-      console.log('Trying backend API fallback...');
       const bookingPayload = {
         bookingId,
         receiptNo,
@@ -2324,91 +2259,38 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         },
       };
 
-      try {
-        console.log('Attempting backend API call...');
-        const response = await fetch('/api/send-booking-confirmation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            to: user.email,
-            booking: bookingPayload,
-          }),
-        });
+      const response = await fetch('/api/send-booking-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: user.email, booking: bookingPayload }),
+      });
 
-        console.log('Backend response status:', response.status, response.ok);
-        const result = await response.json();
-        console.log('Backend result:', result);
+      const result = await response.json();
 
-        if (response.ok && result.ok) {
-          console.log('Email sent successfully via backend:', result);
-
-          try {
-            if (bookingId && !bookingId.startsWith('temp-')) {
-              await set(ref(db, `bookings/${bookingId}/email`), {
-                sent: true,
-                sentTo: user.email,
-                sentAt: serverTimestamp(),
-                provider: result.provider || 'backend-api',
-                status: response.status,
-              });
-            }
-          } catch (dbError: any) {
-            console.warn('Could not save email record to Firebase:', dbError.message);
+      if (response.ok && result.ok) {
+        try {
+          if (bookingId && !bookingId.startsWith('temp-')) {
+            await set(ref(db, `bookings/${bookingId}/email`), {
+              sent: true,
+              sentTo: user.email,
+              sentAt: serverTimestamp(),
+              provider: result.provider || 'api',
+            });
           }
-
-          const msg = `Receipt sent to ${user.email} (via backend)`;
-          setEmailStatusMessage(msg);
-          return msg;
+        } catch (dbError: any) {
+          console.warn('Could not save email record:', dbError.message);
         }
-      } catch (backendError: any) {
-        console.warn('Backend API also failed:', backendError.message);
+
+        const msg = `Receipt sent to ${user.email}`;
+        setEmailStatusMessage(msg);
+        return msg;
+      } else {
+        throw new Error(result.error || 'Email send failed');
       }
-
-      // Final fallback: log to console
-      console.log('All methods failed, logging to console...');
-      const templateParams = {
-        to_email: user.email,
-        to_name: profile?.fullName || 'Guest',
-        receipt_no: receiptNo,
-        total_amount: `₱${total.toLocaleString()}`,
-        items_list: cart.map(i => `- ${i.name} x${i.quantity || 1} (₱${(i.price * (i.quantity || 1)).toLocaleString()})`).join('\n'),
-        customer_phone: profile?.phoneNumber || 'N/A',
-        customer_address: profile?.address || 'N/A',
-        payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
-        payment_ref: referenceNumber || 'N/A',
-        payment_account: selectedEWallet ? parkEWallets[selectedEWallet].number : 'N/A',
-        tour_date: tourDate,
-        date: new Date().toLocaleString()
-      };
-      console.log('--- EMAIL RECEIPT DEV LOG ---');
-      console.log(`To: ${user.email}`);
-      console.log(`Subject: Parola Park Booking Confirmation • ${receiptNo}`);
-      console.table(templateParams);
-      console.log('-----------------------------');
-
-      try {
-        if (bookingId && !bookingId.startsWith('temp-')) {
-          await set(ref(db, `bookings/${bookingId}/email`), {
-            sent: true,
-            sentTo: user.email,
-            sentAt: serverTimestamp(),
-            provider: 'console-log-fallback',
-            warning: 'Email logged to console (dev mode)'
-          });
-        }
-      } catch (dbError: any) {
-        console.warn('Could not save record to Firebase:', dbError.message);
-      }
-
-      const msg = `Receipt logged to console for ${user.email}`;
-      setEmailStatusMessage(msg);
-      return msg;
     } catch (e: any) {
-      console.error('Email sending error:', e);
       const message = e?.message || 'Failed to send confirmation email';
       setEmailStatusMessage(message);
+      console.error('Email error:', message);
       return message;
     }
   };
