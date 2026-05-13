@@ -41,6 +41,8 @@ type BookingPayload = {
   payment?: {
     method?: string;
     provider?: string | null;
+    referenceNumber?: string | null;
+    accountNumber?: string | null;
   };
 };
 
@@ -88,6 +90,8 @@ const buildReceiptHtml = (booking: BookingPayload) => {
   const receiptNo = escapeHtml(booking.receiptNo);
   const method = booking.payment?.method ? escapeHtml(booking.payment.method) : 'card';
   const provider = booking.payment?.provider ? escapeHtml(booking.payment.provider) : '—';
+  const reference = booking.payment?.referenceNumber ? escapeHtml(booking.payment.referenceNumber) : 'N/A';
+  const accountNumber = booking.payment?.accountNumber ? escapeHtml(booking.payment.accountNumber) : 'N/A';
   const total = escapeHtml(formatMoney(booking.total));
 
   return `
@@ -99,14 +103,22 @@ const buildReceiptHtml = (booking: BookingPayload) => {
     </div>
 
     <div style="margin-top:18px; padding:18px; border-radius:18px; background:#fff; border:1px solid #eee;">
-      <div style="display:flex; justify-content:space-between; gap:12px;">
-        <div>
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div style="min-width:180px;">
           <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.14em; color:#6b7280; font-weight:800;">Customer</div>
           <div style="margin-top:6px; font-size:16px; font-weight:800; color:#0b2b2e;">${customerName}</div>
         </div>
-        <div style="text-align:right;">
+        <div style="min-width:180px;">
           <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.14em; color:#6b7280; font-weight:800;">Payment</div>
           <div style="margin-top:6px; font-size:14px; font-weight:800; color:#0b2b2e;">${method} • ${provider}</div>
+        </div>
+        <div style="min-width:180px;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.14em; color:#6b7280; font-weight:800;">Reference</div>
+          <div style="margin-top:6px; font-size:14px; font-weight:800; color:#0b2b2e;">${reference}</div>
+        </div>
+        <div style="min-width:180px;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.14em; color:#6b7280; font-weight:800;">Account</div>
+          <div style="margin-top:6px; font-size:14px; font-weight:800; color:#0b2b2e;">${accountNumber}</div>
         </div>
       </div>
     </div>

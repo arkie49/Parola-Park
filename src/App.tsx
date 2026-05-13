@@ -850,32 +850,6 @@ function DiscoverScreen({ onBack, onNavigate }: { onBack: () => void, onNavigate
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Reviews</h3>
-        <div className="space-y-4">
-          {[
-            { user: 'Juan D.', rating: 5, comment: 'Amazing sunset! The view from the lighthouse is breathtaking.', date: '2 days ago' },
-            { user: 'Maria S.', rating: 4, comment: 'Very historical place. The guides are very knowledgeable.', date: '1 week ago' },
-          ].map((review, i) => (
-            <div key={i} className="glass-card p-5 rounded-3xl space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="font-bold text-sm text-ocean-deep dark:text-gray-200">{review.user}</p>
-                <span className="text-[10px] text-gray-400 dark:text-gray-400">{review.date}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {[...Array(review.rating)].map((_, i) => (
-                  <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 italic">"{review.comment}"</p>
-            </div>
-          ))}
-          <button className="w-full py-4 text-xs font-bold text-ocean-primary hover:text-ocean-deep dark:text-gray-200 transition-colors">
-            Read all 428 reviews
-          </button>
-        </div>
-      </div>
-
       <button onClick={() => onNavigate('reserve')} className="btn-luxury w-full">
         Reserve
       </button>
@@ -2031,6 +2005,106 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
   const [tourDate, setTourDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dateError, setDateError] = useState<string | null>(null);
+  
+  // Payment form inputs
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
+  const [referenceNumber, setReferenceNumber] = useState('');
+
+  // Park's e-wallet information
+  const parkEWallets = {
+    gcash: {
+      number: '09171234567',
+      name: 'Parola Park GCash'
+    },
+    maya: {
+      number: '09179876543',
+      name: 'Parola Park Maya'
+    }
+  };
+
+  // Helper function to determine card type and max length
+  const getCardTypeAndMaxLength = (number: string) => {
+    const cleanNumber = number.replace(/\D/g, ''); // Remove dashes and other non-digits
+    if (cleanNumber.startsWith('3')) {
+      return { type: 'amex', maxLength: 15 };
+    } else if (cleanNumber.startsWith('4')) {
+      return { type: 'visa', maxLength: 16 };
+    } else if (cleanNumber.startsWith('5') || cleanNumber.startsWith('2')) {
+      return { type: 'mastercard', maxLength: 16 };
+    } else if (cleanNumber.startsWith('6')) {
+      return { type: 'discover', maxLength: 16 };
+    }
+    return { type: 'unknown', maxLength: 16 }; // Default to 16
+  };
+
+  // Handle card number input with length limit and formatting
+  const handleCardNumberChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, ''); // Only allow digits
+    const { maxLength } = getCardTypeAndMaxLength(cleanValue);
+    if (cleanValue.length <= maxLength) {
+      // Format with dashes every 4 digits
+      const formattedValue = cleanValue.replace(/(\d{4})(?=\d)/g, '$1-');
+      setCardNumber(formattedValue);
+    }
+  };
+
+  // Handle mobile number input with length limit (11 digits for PH)
+  const handleMobileNumberChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, ''); // Only allow digits
+    if (cleanValue.length <= 11) {
+      setMobileNumber(cleanValue);
+    }
+  };
+
+  // Handle reference number input
+  const handleReferenceNumberChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, ''); // Only allow digits
+    if (cleanValue.length <= 20) { // Allow up to 20 digits for reference number
+      setReferenceNumber(cleanValue);
+    }
+  };
+
+  // Handle card expiry input (MM/YY format)
+  const handleCardExpiryChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, ''); // Only allow digits
+    if (cleanValue.length <= 4) {
+      // Format as MM/YY
+      if (cleanValue.length >= 2) {
+        setCardExpiry(cleanValue.slice(0, 2) + '/' + cleanValue.slice(2));
+      } else {
+        setCardExpiry(cleanValue);
+      }
+    }
+  };
+
+  // Handle CVC input (3-4 digits)
+  const handleCardCvcChange = (value: string) => {
+    const cleanValue = value.replace(/\D/g, ''); // Only allow digits
+    const cleanCardNumber = cardNumber.replace(/\D/g, ''); // Get clean card number for type detection
+    const maxLength = cleanCardNumber.startsWith('3') ? 4 : 3; // Amex has 4-digit CVC
+    if (cleanValue.length <= maxLength) {
+      setCardCvc(cleanValue);
+    }
+  };
+
+  // Clear inputs when switching payment methods
+  useEffect(() => {
+    if (paymentMethod === 'card') {
+      setSelectedEWallet(null);
+      setReferenceNumber('');
+    } else {
+      setCardNumber('');
+      setCardExpiry('');
+      setCardCvc('');
+    }
+  }, [paymentMethod]);
+
+  // Clear reference number when switching e-wallet providers
+  useEffect(() => {
+    setReferenceNumber('');
+  }, [selectedEWallet]);
 
   useEffect(() => {
     if (!user) {
@@ -2130,6 +2204,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           method: paymentMethod,
           provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
           ewalletMode: paymentMethod === 'ewallet' ? ewalletMode : null,
+          referenceNumber: paymentMethod === 'ewallet' ? referenceNumber : null,
         },
         timestamp: serverTimestamp(),
         status: 'confirmed'
@@ -2181,6 +2256,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           customer_phone: profile?.phoneNumber || 'N/A',
           customer_address: profile?.address || 'N/A',
           payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
+          payment_ref: referenceNumber || 'N/A',
+          payment_account: selectedEWallet ? parkEWallets[selectedEWallet].number : 'N/A',
           tour_date: tourDate,
           date: new Date().toLocaleString()
         };
@@ -2242,6 +2319,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         payment: {
           method: paymentMethod,
           provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+          referenceNumber: paymentMethod === 'ewallet' ? referenceNumber : null,
+          accountNumber: paymentMethod === 'ewallet' && selectedEWallet ? parkEWallets[selectedEWallet].number : null,
         },
       };
 
@@ -2298,6 +2377,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
         customer_phone: profile?.phoneNumber || 'N/A',
         customer_address: profile?.address || 'N/A',
         payment_method: `${paymentMethod} ${selectedEWallet ? `(${selectedEWallet})` : ''}`,
+        payment_ref: referenceNumber || 'N/A',
+        payment_account: selectedEWallet ? parkEWallets[selectedEWallet].number : 'N/A',
         tour_date: tourDate,
         date: new Date().toLocaleString()
       };
@@ -2630,14 +2711,33 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
               <div className="flex justify-between items-end mb-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-400">Card Details</h3>
                 <div className="flex gap-2">
-                  <div className="w-8 h-5 bg-gray-200 rounded-sm" />
-                  <div className="w-8 h-5 bg-gray-200 rounded-sm" />
+                  <div className={`w-8 h-5 rounded-sm ${getCardTypeAndMaxLength(cardNumber).type === 'visa' ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                  <div className={`w-8 h-5 rounded-sm ${getCardTypeAndMaxLength(cardNumber).type === 'mastercard' ? 'bg-red-600' : 'bg-gray-200'}`} />
+                  <div className={`w-8 h-5 rounded-sm ${getCardTypeAndMaxLength(cardNumber).type === 'amex' ? 'bg-green-600' : 'bg-gray-200'}`} />
                 </div>
               </div>
-              <input type="text" placeholder="Card Number" className="input-modern" />
+              <input 
+                type="text" 
+                placeholder="Card Number" 
+                value={cardNumber}
+                onChange={(e) => handleCardNumberChange(e.target.value)}
+                className="input-modern" 
+              />
               <div className="grid grid-cols-2 gap-4">
-                <input type="text" placeholder="MM/YY" className="input-modern" />
-                <input type="text" placeholder="CVC" className="input-modern" />
+                <input 
+                  type="text" 
+                  placeholder="MM/YY" 
+                  value={cardExpiry}
+                  onChange={(e) => handleCardExpiryChange(e.target.value)}
+                  className="input-modern" 
+                />
+                <input 
+                  type="text" 
+                  placeholder="CVC" 
+                  value={cardCvc}
+                  onChange={(e) => handleCardCvcChange(e.target.value)}
+                  className="input-modern" 
+                />
               </div>
             </div>
           ) : (
@@ -2668,12 +2768,58 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
               
               {selectedEWallet && (
                 <div className="space-y-6 pt-4 animate-in slide-in-from-top-2 duration-300">
+                  {/* Park's E-Wallet Information */}
+                  <div className="bg-white dark:bg-[#1E293B] rounded-3xl p-6 border border-sand-muted dark:border-white/10 shadow-sm">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={`w-12 h-12 ${selectedEWallet === 'gcash' ? 'bg-blue-600' : 'bg-[#00c07f]'} rounded-full flex items-center justify-center text-white font-bold`}>
+                        {selectedEWallet === 'gcash' ? 'G' : 'M'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-ocean-deep dark:text-gray-200 text-lg">
+                          {parkEWallets[selectedEWallet].name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Send payment to this {selectedEWallet.toUpperCase()} account
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-sand-light dark:bg-[#0B1120] rounded-2xl p-4 border border-sand-muted dark:border-white/10">
+                      <p className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1">Account Number</p>
+                      <p className="text-xl font-mono font-bold text-ocean-deep dark:text-gray-200">
+                        {parkEWallets[selectedEWallet].number}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-sand-light dark:bg-[#0B1120] rounded-2xl p-4 border border-sand-muted dark:border-white/10">
+                      <p className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1">Amount to Send</p>
+                      <p className="text-2xl font-bold text-sunset-vibrant">
+                        ₱{total.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Reference Number Input */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-ocean-deep dark:text-gray-200">Reference Number</h4>
+                    <input 
+                      type="text" 
+                      placeholder="Enter reference number from your transaction" 
+                      value={referenceNumber}
+                      onChange={(e) => handleReferenceNumberChange(e.target.value)}
+                      className="input-modern" 
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      After sending payment, enter the reference number from your {selectedEWallet.toUpperCase()} transaction
+                    </p>
+                  </div>
+
                   <div className="flex p-1 bg-sand-muted dark:bg-[#1E293B]/50 rounded-xl">
                     <button 
                       onClick={() => setEwalletMode('number')}
                       className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${ewalletMode === 'number' ? 'bg-white dark:bg-[#1E293B] shadow-sm text-ocean-deep dark:text-gray-200' : 'text-gray-400 dark:text-gray-400'}`}
                     >
-                      Number
+                      Manual Entry
                     </button>
                     <button 
                       onClick={() => setEwalletMode('scan')}
@@ -2683,9 +2829,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
                     </button>
                   </div>
 
-                  {ewalletMode === 'number' ? (
-                    <input type="text" placeholder="Mobile Number (09xx...)" className="input-modern" />
-                  ) : (
+                  {ewalletMode === 'scan' && (
                     <div className="flex flex-col items-center gap-4 py-4 bg-white dark:bg-[#1E293B] rounded-3xl border border-sand-muted dark:border-white/10 shadow-sm">
                       <div className="p-4 bg-sand-light dark:bg-[#0B1120] rounded-2xl border-2 border-dashed border-sand-muted dark:border-white/10">
                         <QrCode size={120} className={selectedEWallet === 'gcash' ? 'text-blue-600' : 'text-green-600'} />
@@ -2713,7 +2857,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           )}
           <button 
             onClick={handlePayment}
-            disabled={isProcessing || total === 0 || !tourDate || (paymentMethod === 'ewallet' && !selectedEWallet)}
+            disabled={isProcessing || total === 0 || !tourDate || (paymentMethod === 'ewallet' && (!selectedEWallet || !referenceNumber))}
             className="btn-luxury w-full disabled:opacity-30 flex items-center justify-center gap-3"
           >
             {isProcessing ? (
@@ -2901,6 +3045,7 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
       'customerAddress',
       'paymentMethod',
       'paymentProvider',
+      'paymentReference',
       'status',
       'total',
       'items',
@@ -2922,6 +3067,7 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
         b.customer?.address || '',
         b.payment?.method || b.paymentMethod || '',
         b.payment?.provider || '',
+        b.payment?.referenceNumber || '',
         b.status || '',
         b.total ?? '',
         itemsLabel,
@@ -3169,6 +3315,9 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
                       {booking.payment?.provider && (
                         <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
                       )}
+                      {booking.payment?.referenceNumber && (
+                        <span className="px-2 py-0.5 bg-purple-500/10 rounded text-[10px] text-purple-600 font-bold uppercase tracking-wider">Ref: {booking.payment.referenceNumber}</span>
+                      )}
                       {booking.email?.sent === true && (
                         <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Email Sent</span>
                       )}
@@ -3253,6 +3402,9 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
                             )}
                             {booking.payment?.provider && (
                               <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                            )}
+                            {booking.payment?.referenceNumber && (
+                              <span className="px-2 py-0.5 bg-purple-500/10 rounded text-[10px] text-purple-600 font-bold uppercase tracking-wider">Ref: {booking.payment.referenceNumber}</span>
                             )}
                             {booking.status && (
                               <span className="px-2 py-0.5 bg-sunset-vibrant/10 rounded text-[10px] text-sunset-vibrant font-bold uppercase tracking-wider">{booking.status}</span>
@@ -3429,6 +3581,9 @@ function AdminScreen({ onLogout }: { onLogout: () => void }) {
                     )}
                     {booking.payment?.provider && (
                       <span className="px-2 py-0.5 bg-sand-muted dark:bg-[#1E293B] rounded text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider">{booking.payment.provider}</span>
+                    )}
+                    {booking.payment?.referenceNumber && (
+                      <span className="px-2 py-0.5 bg-purple-500/10 rounded text-[10px] text-purple-600 font-bold uppercase tracking-wider">Ref: {booking.payment.referenceNumber}</span>
                     )}
                     {booking.status && (
                       <span className="px-2 py-0.5 bg-sunset-vibrant/10 rounded text-[10px] text-sunset-vibrant font-bold uppercase tracking-wider">{booking.status}</span>
