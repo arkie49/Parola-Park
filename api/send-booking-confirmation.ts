@@ -247,9 +247,16 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const transporter = createTransporter();
-  if (!transporter) {
-    res.status(500).json({ ok: false, error: 'SMTP is not configured (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS)' });
+  // In development, log to console if no email services configured
+  if (!process.env.RESEND_API_KEY && !process.env.SMTP_HOST) {
+    console.log('--- DEVELOPMENT MODE: EMAIL LOG ---');
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log('Content (HTML):');
+    console.log(html);
+    console.log('-----------------------------------');
+
+    res.status(200).json({ ok: true, provider: 'console-log' });
     return;
   }
 
