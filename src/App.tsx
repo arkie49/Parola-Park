@@ -2325,8 +2325,8 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       };
 
       try {
-        console.log('Attempting backend API call to http://localhost:3001...');
-        const response = await fetch('http://localhost:3001/api/send-booking-confirmation', {
+        console.log('Attempting backend API call...');
+        const response = await fetch('/api/send-booking-confirmation', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
