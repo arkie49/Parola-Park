@@ -152,6 +152,40 @@ const escapeHtml = (input: string) => {
     .replaceAll("'", '&#39;');
 };
 
+const sendWithResend = async ({
+  to,
+  from,
+  replyTo,
+  subject,
+  html,
+}: {
+  to: string;
+  from: string;
+  replyTo?: string;
+  subject: string;
+  html: string;
+}) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return { ok: false as const, error: 'RESEND_API_KEY is not configured' };
+  }
+
+  const resend = new Resend(apiKey);
+  const result = await resend.emails.send({
+    from,
+    to,
+    ...(replyTo ? { replyTo } : {}),
+    subject,
+    html,
+  });
+
+  if (result.error) {
+    return { ok: false as const, error: result.error.message || 'Resend API error' };
+  }
+
+  return { ok: true as const, id: result.data?.id };
+};
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
@@ -166,8 +200,32 @@ app.post('/api/send-booking-confirmation', async (req, res) => {
   }
 
   const fromEmail = process.env.MAIL_FROM || 'noreply@parolapark.com';
-  
+  const fromAddr = extractEmailAddress(fromEmail);
+  const fromDomain = extractDomain(fromAddr);
+  const shouldUseResendFallbackFrom = Boolean(fromDomain && WEBMAIL_DOMAINS.has(fromDomain));
+  const resendFrom = shouldUseResendFallbackFrom ? (process.env.RESEND_FROM || 'onboarding@resend.dev') : fromEmail;
+  const replyTo = process.env.MAIL_REPLY_TO || (shouldUseResendFallbackFrom ? fromAddr : undefined);
+
+  if (process.env.RESEND_API_KEY) {
+    const result = await sendWithResend({
+      to,
+      from: resendFrom,
+      replyTo,
+      subject: `Parola Park Booking Confirmation • ${booking.receiptNo}`,
+      html: buildReceiptHtml(booking),
+    });
+
+    if (!result.ok) {
+      res.status(500).json({ ok: false, error: result.error, provider: 'resend', from: resendFrom });
+      return;
+    }
+
+    res.status(200).json({ ok: true, provider: 'resend', id: result.id || null, from: resendFrom });
+    return;
+  }
+
   const transporter = createTransporter();
+
   if (!transporter) {
     console.log('--- DEVELOPMENT MODE: EMAIL LOG ---');
     console.log(`To: ${to}`);
@@ -175,8 +233,8 @@ app.post('/api/send-booking-confirmation', async (req, res) => {
     console.log('Content (HTML):');
     console.log(buildReceiptHtml(booking));
     console.log('-----------------------------------');
-    
-    res.json({ ok: true, provider: 'console-log' });
+
+    res.status(200).json({ ok: true, provider: 'console-log' });
     return;
   }
 
@@ -188,9 +246,9 @@ app.post('/api/send-booking-confirmation', async (req, res) => {
       html: buildReceiptHtml(booking),
     });
 
-    res.json({ ok: true });
+    res.status(200).json({ ok: true, provider: 'smtp' });
   } catch (e: any) {
-    res.status(500).json({ ok: false, error: e?.message || 'Failed to send email' });
+    res.status(500).json({ ok: false, error: e?.message || 'Failed to send email', provider: 'smtp' });
   }
 });
 
