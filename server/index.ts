@@ -46,13 +46,28 @@ type BookingPayload = {
   };
 };
 
+const PLACEHOLDER_ENV_VALUES = new Set([
+  'your_resend_api_key_here',
+  'your_email@gmail.com',
+  'your_app_password',
+  'replace_with_your_api_key',
+  'replace_me',
+  'replaceme',
+  'xxx',
+]);
+
+const isConfiguredValue = (value?: string) => {
+  if (!value) return false;
+  return !PLACEHOLDER_ENV_VALUES.has(value.trim().toLowerCase());
+};
+
 const createTransporter = () => {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  if (!host || !port || !user || !pass) {
+  if (!host || !port || !user || !pass || !isConfiguredValue(user) || !isConfiguredValue(pass)) {
     return null;
   }
 
@@ -166,11 +181,11 @@ const sendWithResend = async ({
   html: string;
 }) => {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return { ok: false as const, error: 'RESEND_API_KEY is not configured' };
+  if (!isConfiguredValue(apiKey)) {
+    return { ok: false as const, error: 'RESEND_API_KEY is not configured or is a placeholder' };
   }
 
-  const resend = new Resend(apiKey);
+  const resend = new Resend(apiKey!);
   const result = await resend.emails.send({
     from,
     to,

@@ -38,6 +38,21 @@ const escapeHtml = (input: string) => {
     .replaceAll("'", '&#39;');
 };
 
+const PLACEHOLDER_ENV_VALUES = new Set([
+  'your_resend_api_key_here',
+  'your_email@gmail.com',
+  'your_app_password',
+  'replace_with_your_api_key',
+  'replace_me',
+  'replaceme',
+  'xxx',
+]);
+
+const isConfiguredValue = (value?: string) => {
+  if (!value) return false;
+  return !PLACEHOLDER_ENV_VALUES.has(value.trim().toLowerCase());
+};
+
 const formatMoney = (amount: number) => {
   if (amount === 0) return 'FREE';
   return amount.toLocaleString('en-PH');
@@ -123,7 +138,7 @@ const createTransporter = () => {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  if (!host || !port || !user || !pass) {
+  if (!host || !port || !user || !pass || !isConfiguredValue(user) || !isConfiguredValue(pass)) {
     return null;
   }
 
@@ -175,11 +190,11 @@ const sendWithResend = async ({
   html: string;
 }) => {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return { ok: false as const, error: 'RESEND_API_KEY is not configured' };
+  if (!isConfiguredValue(apiKey)) {
+    return { ok: false as const, error: 'RESEND_API_KEY is not configured or is a placeholder' };
   }
 
-  const resend = new Resend(apiKey);
+  const resend = new Resend(apiKey!);
   const result = await resend.emails.send({
     from,
     to,
@@ -217,8 +232,9 @@ export default async function handler(req: any, res: any) {
 
   const subject = `Parola Park Booking Confirmation • ${booking.receiptNo}`;
   const html = buildReceiptHtml(booking);
+  const resendApiKey = isConfiguredValue(process.env.RESEND_API_KEY) ? process.env.RESEND_API_KEY : null;
 
-  if (process.env.RESEND_API_KEY) {
+  if (resendApiKey) {
     const fromAddr = extractEmailAddress(fromEmail);
     const fromDomain = extractDomain(fromAddr);
     const shouldUseResendFallbackFrom = Boolean(fromDomain && WEBMAIL_DOMAINS.has(fromDomain));

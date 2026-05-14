@@ -46,6 +46,21 @@ const escapeHtml = (input: string) => {
     .replaceAll("'", '&#39;');
 };
 
+const PLACEHOLDER_ENV_VALUES = new Set([
+  'your_resend_api_key_here',
+  'your_email@gmail.com',
+  'your_app_password',
+  'replace_with_your_api_key',
+  'replace_me',
+  'replaceme',
+  'xxx',
+]);
+
+const isConfiguredValue = (value?: string) => {
+  if (!value) return false;
+  return !PLACEHOLDER_ENV_VALUES.has(value.trim().toLowerCase());
+};
+
 const formatMoney = (amount: number) => {
   if (amount === 0) return 'FREE';
   return amount.toLocaleString('en-PH');
@@ -121,9 +136,9 @@ const buildReceiptHtml = (booking: BookingData) => {
 
 const sendEmail = async (to: string, subject: string, html: string) => {
   // Try Resend first
-  if (process.env.RESEND_API_KEY) {
+  if (isConfiguredValue(process.env.RESEND_API_KEY)) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      const resend = new Resend(process.env.RESEND_API_KEY!);
       const result = await resend.emails.send({
         from: process.env.MAIL_FROM || 'noreply@parolapark.com',
         to,
@@ -140,12 +155,14 @@ const sendEmail = async (to: string, subject: string, html: string) => {
     } catch (error) {
       console.warn('Resend failed:', error);
     }
+  } else {
+    console.warn('Resend API key missing or placeholder, skipping Resend provider.');
   }
 
   // Fallback to SMTP
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  if (process.env.SMTP_HOST && isConfiguredValue(process.env.SMTP_USER) && isConfiguredValue(process.env.SMTP_PASS)) {
     try {
-      const transporter = nodemailer.createTransporter({
+      const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: Number(process.env.SMTP_PORT) || 587,
         secure: process.env.SMTP_PORT === '465',
@@ -167,6 +184,8 @@ const sendEmail = async (to: string, subject: string, html: string) => {
     } catch (error) {
       console.warn('SMTP failed:', error);
     }
+  } else {
+    console.warn('SMTP configuration missing or placeholder values detected.');
   }
 
   // Development fallback - log to console

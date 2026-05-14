@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
+import emailjs from '@emailjs/browser';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -58,6 +59,10 @@ import parola2 from '../asset/parola2.jpg';
 import parolaSablayan from '../asset/Sablayan-Parola-Park-Sablayan-1003x380.jpg';
 
 const ADMIN_EMAIL = 'adminparola@gmail.com';
+
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID as string;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY as string;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
@@ -2238,63 +2243,43 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
       return msg;
     }
 
-    const bookingPayload = {
-      bookingId,
-      receiptNo,
-      customer: {
-        fullName: profile?.fullName || null,
-        phoneNumber: profile?.phoneNumber || null,
-        address: profile?.address || null,
-        email: user.email,
-      },
-      items: cart,
-      total: total,
-      currency: 'PHP',
-      tourDate,
-      payment: {
-        method: paymentMethod,
-        provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
-        ewalletMode: paymentMethod === 'ewallet' ? ewalletMode : null,
-        referenceNumber: paymentMethod === 'ewallet' ? referenceNumber : null,
-        accountNumber: paymentMethod === 'ewallet' && selectedEWallet ? parkEWallets[selectedEWallet].number : null,
-      },
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+      const msg = 'EmailJS is not configured. Please set VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY.';
+      setEmailStatusMessage(msg);
+      return msg;
+    }
+
+    const templateParams = {
+      user_name: profile?.fullName || 'Guest',
+      user_email: user.email,
+      receipt_no: receiptNo,
+      booking_id: bookingId || 'N/A',
+      booking_date: tourDate || 'N/A',
+      total_amount: total.toLocaleString('en-PH'),
+      payment_method: paymentMethod,
+      payment_provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+      payment_reference: paymentMethod === 'ewallet' ? referenceNumber || 'N/A' : 'N/A',
+      account_number: paymentMethod === 'ewallet' && selectedEWallet ? parkEWallets[selectedEWallet].number : 'N/A',
+      items: cart
+        .map((item) => `${item.name} x${item.quantity || 1} (${item.type}) - ₱${(item.price * (item.quantity || 1)).toLocaleString('en-PH')}`)
+        .join('\n'),
+      subject: `Parola Park Booking Confirmation • ${receiptNo}`,
     };
 
     try {
-      const response = await fetch('/api/send-booking-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: user.email, booking: bookingPayload }),
-      });
+      const result = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
 
-      const result = await response.json();
-
-      if (response.ok && result.ok) {
-        try {
-          if (bookingId && !bookingId.startsWith('temp-')) {
-            await set(ref(db, `bookings/${bookingId}/email`), {
-              sent: true,
-              sentTo: user.email,
-              sentAt: serverTimestamp(),
-              provider: result.provider || 'api',
-              responseId: result.id || null,
-            });
-          }
-        } catch (dbError: any) {
-          console.warn('Could not save email record to Firebase:', dbError.message);
-        }
-
-        const msg = `Receipt sent to ${user.email}`;
-        setEmailStatusMessage(msg);
-        return msg;
+      if (result.status !== 200) {
+        throw new Error(`EmailJS send failed with status ${result.status}`);
       }
 
-      const errorMessage = result?.error || 'Email send failed';
-      throw new Error(errorMessage);
+      const msg = `Receipt sent to ${user.email}`;
+      setEmailStatusMessage(msg);
+      return msg;
     } catch (error: any) {
       const message = error?.message || 'Failed to send confirmation email';
       setEmailStatusMessage(message);
-      console.error('Email send failed:', message);
+      console.error('EmailJS send failed:', message);
       return message;
     }
   };
