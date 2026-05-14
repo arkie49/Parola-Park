@@ -2232,9 +2232,71 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   };
 
   const sendConfirmationEmail = async ({ bookingId, receiptNo }: { bookingId: string | null, receiptNo: string }) => {
-    // Email is now sent automatically by Firebase Cloud Function when booking is saved
-    console.log('Email will be sent automatically by Cloud Function for booking:', receiptNo);
-    return `Email will be sent automatically for ${receiptNo}`;
+    if (!user?.email) {
+      const msg = 'Missing account email.';
+      setEmailStatusMessage(msg);
+      return msg;
+    }
+
+    const bookingPayload = {
+      bookingId,
+      receiptNo,
+      customer: {
+        fullName: profile?.fullName || null,
+        phoneNumber: profile?.phoneNumber || null,
+        address: profile?.address || null,
+        email: user.email,
+      },
+      items: cart,
+      total: total,
+      currency: 'PHP',
+      tourDate,
+      payment: {
+        method: paymentMethod,
+        provider: paymentMethod === 'ewallet' ? selectedEWallet : 'card',
+        ewalletMode: paymentMethod === 'ewallet' ? ewalletMode : null,
+        referenceNumber: paymentMethod === 'ewallet' ? referenceNumber : null,
+        accountNumber: paymentMethod === 'ewallet' && selectedEWallet ? parkEWallets[selectedEWallet].number : null,
+      },
+    };
+
+    try {
+      const response = await fetch('/api/send-booking-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: user.email, booking: bookingPayload }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.ok) {
+        try {
+          if (bookingId && !bookingId.startsWith('temp-')) {
+            await set(ref(db, `bookings/${bookingId}/email`), {
+              sent: true,
+              sentTo: user.email,
+              sentAt: serverTimestamp(),
+              provider: result.provider || 'api',
+              responseId: result.id || null,
+            });
+          }
+        } catch (dbError: any) {
+          console.warn('Could not save email record to Firebase:', dbError.message);
+        }
+
+        const msg = `Receipt sent to ${user.email}`;
+        setEmailStatusMessage(msg);
+        return msg;
+      }
+
+      const errorMessage = result?.error || 'Email send failed';
+      throw new Error(errorMessage);
+    } catch (error: any) {
+      const message = error?.message || 'Failed to send confirmation email';
+      setEmailStatusMessage(message);
+      console.error('Email send failed:', message);
+      return message;
+    }
   };
 
   const handlePayment = () => {

@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=5173 --host=0.0.0.0 --strictPort",
+    "dev": "concurrently -k \"npm run server\" \"vite --port=5173 --host=0.0.0.0 --strictPort\"",
     "server": "tsx server/index.ts",
-    "dev:full": "concurrently -k \"npm run server\" \"npm run dev\"",
+    "dev:full": "npm run dev",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
