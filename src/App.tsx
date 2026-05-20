@@ -57,6 +57,7 @@ import parolaPark3 from '../asset/parola-park (3).jpg';
 import parola1 from '../asset/parola1.jpg';
 import parola2 from '../asset/parola2.jpg';
 import parolaSablayan from '../asset/Sablayan-Parola-Park-Sablayan-1003x380.jpg';
+import gcashQr from '../asset/gcash.jpg';
 
 const ADMIN_EMAIL = 'adminparola@gmail.com';
 
@@ -1489,6 +1490,8 @@ function ProfileScreen({ user, initialTab = 'profile', onLogin, onLogout }: { us
 
   const [modal, setModal] = useState<'payment' | 'notifications' | 'help' | null>(null);
   const [receiptBooking, setReceiptBooking] = useState<any | null>(null);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const profileContentRef = useRef<HTMLDivElement | null>(null);
 
   const [paymentMethods, setPaymentMethods] = useState<{ id: string, name: string, type: string, details: string, isDefault: boolean }[]>([
     { id: '1', name: 'GCash', type: 'ewallet', details: 'Linked • 0917****123', isDefault: true }
@@ -1497,6 +1500,16 @@ function ProfileScreen({ user, initialTab = 'profile', onLogin, onLogout }: { us
   const [newPaymentForm, setNewPaymentForm] = useState({ name: '', details: '' });
 
   const totalSpent = history.reduce((sum, booking) => sum + (Number(booking.total) || 0), 0);
+
+  useEffect(() => {
+    const el = profileContentRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      setIsHeaderCollapsed(el.scrollTop >= 80);
+    };
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -1682,18 +1695,18 @@ function ProfileScreen({ user, initialTab = 'profile', onLogin, onLogout }: { us
       </AnimatePresence>
 
       {/* Profile Header */}
-      <div className="p-8 pb-4">
-        <h2 className="text-3xl font-display font-bold text-ocean-deep dark:text-gray-200 mb-6">Profile</h2>
+      <div className={`px-8 ${isHeaderCollapsed ? 'pb-2' : 'pb-4'}`}>
+        <h2 className={`font-display font-bold text-ocean-deep dark:text-gray-200 ${isHeaderCollapsed ? 'text-2xl mb-3' : 'text-3xl mb-6'}`}>Profile</h2>
         
-        <div className="p-6 glass-card rounded-[32px] relative overflow-hidden flex items-center gap-6">
+        <div className={`glass-card rounded-[32px] relative overflow-hidden flex items-center ${isHeaderCollapsed ? 'gap-4 p-4' : 'gap-6 p-6'}`}>
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-ocean-primary to-sunset-vibrant" />
-          <div className="w-20 h-20 rounded-2xl bg-ocean-deep dark:bg-ocean-primary text-white flex items-center justify-center text-3xl font-display font-bold shadow-xl shrink-0">
+          <div className={`${isHeaderCollapsed ? 'w-16 h-16 text-2xl' : 'w-20 h-20 text-3xl'} rounded-2xl bg-ocean-deep dark:bg-ocean-primary text-white flex items-center justify-center font-display font-bold shadow-xl shrink-0`}>
             {user.email?.[0].toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-display font-bold text-ocean-deep dark:text-gray-200 truncate">{user.email?.split('@')[0]}</h3>
-            <p className="text-gray-500 dark:text-gray-300 text-xs truncate mb-2">{user.email}</p>
-            <div className="flex gap-2">
+            <h3 className={`font-display font-bold text-ocean-deep dark:text-gray-200 truncate ${isHeaderCollapsed ? 'text-lg' : 'text-xl'}`}>{user.email?.split('@')[0]}</h3>
+            <p className={`text-gray-500 dark:text-gray-300 ${isHeaderCollapsed ? 'text-[11px] mb-1' : 'text-xs mb-2'} truncate`}>{user.email}</p>
+            <div className={`flex gap-2 ${isHeaderCollapsed ? 'hidden' : ''}`}>
               <span className="px-2 py-0.5 bg-ocean-primary/10 text-ocean-primary text-[10px] font-bold rounded-full uppercase tracking-wider">Explorer</span>
               <span className="px-2 py-0.5 bg-sunset-vibrant/10 text-sunset-vibrant text-[10px] font-bold rounded-full uppercase tracking-wider">Lvl 1</span>
             </div>
@@ -1702,7 +1715,7 @@ function ProfileScreen({ user, initialTab = 'profile', onLogin, onLogout }: { us
       </div>
 
       {/* Tabs */}
-      <div className="px-8 flex gap-4 mb-6">
+      <div className={`px-8 flex ${isHeaderCollapsed ? 'gap-2 mb-4' : 'gap-4 mb-6'}`}>
         {['profile', 'history', 'settings'].map((tab) => (
           <button 
             key={tab}
@@ -1719,7 +1732,7 @@ function ProfileScreen({ user, initialTab = 'profile', onLogin, onLogout }: { us
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
+      <div ref={profileContentRef} className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
         <AnimatePresence mode="wait">
           {activeTab === 'profile' && (
             <motion.div 
@@ -2014,6 +2027,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
 
   // Park's e-wallet information
@@ -2064,10 +2078,26 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
 
   // Handle reference number input
   const handleReferenceNumberChange = (value: string) => {
-    const cleanValue = value.replace(/\D/g, ''); // Only allow digits
-    if (cleanValue.length <= 20) { // Allow up to 20 digits for reference number
+    const cleanValue = value.replace(/[^a-zA-Z0-9]/g, ''); // Allow letters and digits only
+    if (cleanValue.length <= 20) { // Allow up to 20 alphanumeric characters for reference number
       setReferenceNumber(cleanValue);
     }
+  };
+
+  // Proof image for e-wallet payment (GCash)
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+
+  const handleProofImageChange = (file?: File | null) => {
+    if (!file) {
+      setProofImageFile(null);
+      setProofImagePreview(null);
+      return;
+    }
+    setProofImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setProofImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   // Handle card expiry input (MM/YY format)
@@ -2105,9 +2135,13 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
     }
   }, [paymentMethod]);
 
-  // Clear reference number when switching e-wallet providers
+  // Clear reference number and proof image when switching e-wallet providers
   useEffect(() => {
     setReferenceNumber('');
+    if (selectedEWallet !== 'gcash') {
+      setProofImageFile(null);
+      setProofImagePreview(null);
+    }
   }, [selectedEWallet]);
 
   useEffect(() => {
@@ -2210,6 +2244,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           ewalletMode: paymentMethod === 'ewallet' ? ewalletMode : null,
           referenceNumber: paymentMethod === 'ewallet' ? referenceNumber : null,
           accountNumber: paymentMethod === 'ewallet' && selectedEWallet ? parkEWallets[selectedEWallet].number : null,
+          proofImage: paymentMethod === 'ewallet' && selectedEWallet === 'gcash' ? proofImagePreview : null,
         },
         timestamp: serverTimestamp(),
         status: 'confirmed'
@@ -2700,10 +2735,39 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
                     </button>
                   </div>
 
+                  {selectedEWallet === 'gcash' && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-ocean-deep dark:text-gray-200">Proof of Payment</h4>
+                      <label className="block w-full rounded-3xl border border-sand-muted dark:border-white/10 bg-sand-light dark:bg-[#0B1120] p-4 text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:border-ocean-deep">
+                        <span className="block font-medium text-ocean-deep dark:text-gray-200 mb-2">Upload your GCash receipt</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleProofImageChange(e.target.files?.[0] || null)}
+                        />
+                        <span className="text-xs text-gray-400 dark:text-gray-500">PNG, JPG, or WEBP. Required for manual payment review.</span>
+                      </label>
+                      {proofImagePreview ? (
+                        <div className="rounded-3xl overflow-hidden border border-sand-muted dark:border-white/10">
+                          <img src={proofImagePreview} alt="Payment proof preview" className="w-full h-64 object-cover" />
+                        </div>
+                      ) : (
+                        <div className="rounded-3xl border border-dashed border-sand-muted dark:border-white/10 p-6 text-center text-gray-400 dark:text-gray-500">
+                          No proof uploaded yet.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {ewalletMode === 'scan' && (
                     <div className="flex flex-col items-center gap-4 py-4 bg-white dark:bg-[#1E293B] rounded-3xl border border-sand-muted dark:border-white/10 shadow-sm">
                       <div className="p-4 bg-sand-light dark:bg-[#0B1120] rounded-2xl border-2 border-dashed border-sand-muted dark:border-white/10">
-                        <QrCode size={120} className={selectedEWallet === 'gcash' ? 'text-blue-600' : 'text-green-600'} />
+                        {selectedEWallet === 'gcash' ? (
+                          <img src={gcashQr} alt="GCash QR code" className="w-60 h-60 object-cover rounded-3xl" />
+                        ) : (
+                          <QrCode size={120} className="text-green-600" />
+                        )}
                       </div>
                       <p className="text-[10px] text-gray-400 dark:text-gray-400 uppercase tracking-widest text-center px-6">
                         Scan this QR code with your {selectedEWallet === 'gcash' ? 'GCash' : 'Maya'} app to pay ₱{total}
@@ -2728,7 +2792,7 @@ function CheckoutScreen({ total, cart, user, onBack, onSuccess }: { total: numbe
           )}
           <button 
             onClick={handlePayment}
-            disabled={isProcessing || total === 0 || !tourDate || (paymentMethod === 'ewallet' && (!selectedEWallet || !referenceNumber))}
+            disabled={isProcessing || total === 0 || !tourDate || (paymentMethod === 'ewallet' && (!selectedEWallet || !referenceNumber || (selectedEWallet === 'gcash' && !proofImageFile)))}
             className="btn-luxury w-full disabled:opacity-30 flex items-center justify-center gap-3"
           >
             {isProcessing ? (
